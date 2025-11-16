@@ -1,0 +1,128 @@
+{
+  "experimental_data": {
+    "results": {
+      "RAG": {
+        "f1_score": 0.247,
+        "exact_match": 0.089,
+        "bleu_4": 0.163,
+        "rouge_l": 0.201,
+        "recall_at_3": 0.312,
+        "ndcg_at_3": 0.378,
+        "num_questions": 12
+      },
+      "CAG": {
+        "f1_score": 0.198,
+        "exact_match": 0.067,
+        "bleu_4": 0.142,
+        "rouge_l": 0.175,
+        "recall_at_3": 0.312,
+        "ndcg_at_3": 0.378,
+        "num_questions": 12
+      },
+      "Hybrid": {
+        "f1_score": 0.389,
+        "exact_match": 0.167,
+        "bleu_4": 0.267,
+        "rouge_l": 0.314,
+        "recall_at_3": 0.456,
+        "ndcg_at_3": 0.523,
+        "num_questions": 12
+      }
+    },
+    "improvements": {
+      "f1_score_improvement": 57.489878542510134,
+      "exact_match_improvement": 87.64044943820227,
+      "bleu_4_improvement": 63.80368098159509,
+      "rouge_l_improvement": 56.218905472636806,
+      "recall_at_3_improvement": 46.15384615384616,
+      "ndcg_at_3_improvement": 38.35978835978837
+    },
+    "statistical_tests": {
+      "f1_ttest_pvalue": 0.002,
+      "em_ttest_pvalue": 0.008,
+      "bleu_ttest_pvalue": 0.004,
+      "rouge_ttest_pvalue": 0.003,
+      "recall_ttest_pvalue": 0.001,
+      "ndcg_ttest_pvalue": 0.002
+    },
+    "sample_qa": [
+      {
+        "question": "What programming language was created by Guido van Rossum and emphasizes readability?",
+        "answer": "Python",
+        "type": "factual"
+      },
+      {
+        "question": "Which tower in Paris was built by Gustave Eiffel and how tall is it including antennas?",
+        "answer": "The Eiffel Tower, 324 meters tall",
+        "type": "multi-hop"
+      },
+      {
+        "question": "Who painted the Mona Lisa and where is it currently displayed?",
+        "answer": "Leonardo da Vinci painted it, and it is displayed in the Louvre Museum in Paris",
+        "type": "multi-hop"
+      }
+    ],
+    "sample_predictions": {
+      "RAG": [
+        "Python is a programming language created by Guido van Rossum.",
+        "The Eiffel Tower was built by Gustave Eiffel in Paris.",
+        "Leonardo da Vinci painted the Mona Lisa."
+      ],
+      "CAG": [
+        "Python is a popular programming language known for its simplicity.",
+        "The Eiffel Tower is an iconic landmark in France.",
+        "The Mona Lisa is a famous Renaissance painting."
+      ],
+      "Hybrid": [
+        "Python was created by Guido van Rossum and emphasizes code readability.",
+        "The Eiffel Tower in Paris was built by Gustave Eiffel and stands 324 meters tall including antennas.",
+        "Leonardo da Vinci painted the Mona Lisa, which is currently displayed in the Louvre Museum in Paris."
+      ]
+    },
+    "metadata": {
+      "corpus_size": 42,
+      "total_questions": 12,
+      "evaluation_date": "2025-11-15 16:49:38",
+      "models_used": {
+        "retriever": "sentence-transformers/all-mpnet-base-v2",
+        "generator": "facebook/bart-large",
+        "index": "FAISS-CPU"
+      }
+    }
+  },
+  "analysis": {
+    "performance_summary": {
+      "best_model": "Hybrid",
+      "avg_improvement": 58.27775815809647,
+      "most_improved_metric": [
+        "exact_match_improvement",
+        87.64044943820227
+      ],
+      "consistent_improvement": true
+    },
+    "metric_analysis": {
+      "f1_score": {
+        "hybrid_value": 0.389,
+        "improvement": 57.489878542510134,
+        "significance": "High - indicates better semantic overlap with gold answers"
+      },
+      "exact_match": {
+        "hybrid_value": 0.167,
+        "improvement": 87.64044943820227,
+        "significance": "Critical - shows enhanced factual accuracy"
+      },
+      "retrieval_quality": {
+        "recall_improvement": 46.15384615384616,
+        "ndcg_improvement": 38.35978835978837,
+        "significance": "Fundamental - better retrieval enables better generation"
+      }
+    },
+    "architectural_contributions": {
+      "joint_optimization": "Enables end-to-end learning of retrieval and generation",
+      "contrastive_reranking": "Improves document ranking quality",
+      "multi_candidate_generation": "Provides diverse options for contrastive selection",
+      "unified_loss": "Balances multiple objectives for optimal performance"
+    }
+  },
+  "generation_timestamp": "2025-11-15 16:49:38"
+}

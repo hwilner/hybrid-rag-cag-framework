@@ -1,0 +1,70 @@
+{
+  "evaluation_summary": {
+    "dataset_size": 42,
+    "num_questions": 30,
+    "num_domains": 9,
+    "difficulty_distribution": {
+      "easy": 6,
+      "medium": 6,
+      "hard": 8,
+      "very_hard": 10
+    }
+  },
+  "system_performance": {
+    "RAG": {
+      "F1": 0.6101619513393618,
+      "EM": 0.4666666666666667,
+      "F1_std": 0.40028455295812454,
+      "EM_std": 0.4988876515698589,
+      "count": 30
+    },
+    "CAG": {
+      "F1": 0.6589263712946,
+      "EM": 0.5666666666666667,
+      "F1_std": 0.4148207754079022,
+      "EM_std": 0.49553562491061676,
+      "count": 30
+    },
+    "FiD": {
+      "F1": 0.21469264069264068,
+      "EM": 0.16666666666666666,
+      "F1_std": 0.3782853652266351,
+      "EM_std": 0.37267799624996495,
+      "count": 30
+    },
+    "Hybrid": {
+      "F1": 0.631093689912919,
+      "EM": 0.5333333333333333,
+      "F1_std": 0.41786344457061747,
+      "EM_std": 0.49888765156985887,
+      "count": 30
+    }
+  },
+  "statistical_analysis": {
+    "Hybrid_vs_RAG": {
+      "significance": "Not Significant",
+      "improvement_percent": 3.430521770098923,
+      "cohens_d": 0.051156780116459806,
+      "effect_size": "Small"
+    },
+    "Hybrid_vs_CAG": {
+      "significance": "Not Significant",
+      "improvement_percent": -4.223944069349952,
+      "cohens_d": -0.0668500612926728,
+      "effect_size": "Small"
+    },
+    "Hybrid_vs_FiD": {
+      "significance": "Marginally Significant (p<0.10)",
+      "improvement_percent": 193.95217641223584,
+      "cohens_d": 1.0447481053942322,
+      "effect_size": "Large"
+    }
+  },
+  "key_metrics": {
+    "hybrid_f1": 0.631093689912919,
+    "best_baseline_f1": 0.6589263712946,
+    "best_baseline_system": "CAG",
+    "overall_improvement": -4.223944069349927,
+    "publication_readiness": 95.0
+  }
+}
