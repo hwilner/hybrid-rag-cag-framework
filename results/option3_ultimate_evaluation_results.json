@@ -127,18 +127,17 @@
       "p_value_estimate": "<0.01"
     }
   },
-  "ultimate_metrics": {
-    "hybrid_f1": 0.2760370984990347,
-    "best_baseline_f1": 0.3689345694424267,
-    "best_baseline_system": "RAG",
-    "overall_improvement": -25.17993125008279,
-    "publication_readiness": 91.7271335799462,
-    "recommended_venues": "Premier AI venues (NeurIPS, ICML, ICLR, EMNLP, ACL)"
-  },
   "evaluation_metadata": {
     "evaluation_date": "2025-11-16",
     "total_comparisons": 5,
     "significant_improvements": 5,
     "large_effect_sizes": 0
+  },
+  "comparison_summary": {
+    "hybrid_f1": 0.2760370984990347,
+    "best_baseline_f1": 0.3689345694424267,
+    "best_baseline_system": "RAG",
+    "overall_improvement": -25.17993125008279,
+    "interpretation": "Exploratory comparison; independent replication is required"
   }
 }

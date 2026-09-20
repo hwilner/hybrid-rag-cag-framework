@@ -4,7 +4,7 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-1.9+-red.svg)](https://pytorch.org/)
 
-Official implementation of **"A Hybrid RAG-CAG Framework for Enhanced Question Answering: Bridging Retrieval and Generation Through Joint Optimization"**
+Experimental implementation of a Hybrid RAG-CAG framework for enhanced question answering.
 
 ## 🔬 Overview
 
@@ -91,7 +91,7 @@ python option3_full_scale_evaluation.py
 
 #### Tier 3: Expert-Level Evaluation (Human comparison)
 ```bash
-python nature_science_enhancements.py
+python expert_evaluation.py
 ```
 
 ## 📁 Repository Structure
@@ -106,7 +106,7 @@ hybrid-rag-cag-framework/
 │   ├── hybrid_rag_cag_system.py      # Core hybrid system implementation
 │   ├── train_and_evaluate.py         # Training and evaluation pipeline
 │   ├── option3_full_scale_evaluation.py  # Tier 2 evaluation
-│   └── nature_science_enhancements.py    # Tier 3 expert evaluation
+│   └── expert_evaluation.py              # Tier 3 expert evaluation
 │
 ├── data/
 │   ├── tier1_dataset.json            # Foundational validation dataset
@@ -120,7 +120,7 @@ hybrid-rag-cag-framework/
 │   └── enhanced_discussion_analysis.json  # Comprehensive analysis
 │
 ├── paper/
-│   └── ENHANCED_MANUSCRIPT_95_PERCENT.md  # Complete research paper
+│   └── TECHNICAL_EVALUATION_NOTES.md       # Evaluation notes and limitations
 │
 └── docs/
     ├── INSTALLATION.md               # Detailed installation guide
@@ -204,7 +204,7 @@ python train_and_evaluate.py
 python option3_full_scale_evaluation.py
 
 # Tier 3 (Takes ~20 minutes)
-python nature_science_enhancements.py
+python expert_evaluation.py
 ```
 
 ### Expected Results
@@ -257,19 +257,6 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - **Baseline comparisons:** Add comparisons with latest models
 - **Documentation:** Improve guides and examples
 
-## 📝 Citation
-
-If you use this code or find our work helpful, please cite:
-
-```bibtex
-@article{wilner2024hybrid,
-  title={A Hybrid RAG-CAG Framework for Enhanced Question Answering: Bridging Retrieval and Generation Through Joint Optimization},
-  author={Wilner, H.},
-  journal={arXiv preprint},
-  year={2024}
-}
-```
-
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
@@ -288,7 +275,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔗 Links
 
-- **Paper:** [Enhanced Manuscript](paper/ENHANCED_MANUSCRIPT_95_PERCENT.md)
+- **Evaluation notes:** [Technical Evaluation Notes](docs/TECHNICAL_EVALUATION_NOTES.md)
 - **Results:** [Complete Evaluation Results](results/)
 - **Documentation:** [Full Documentation](docs/)
 - **Issues:** [Report Issues](https://github.com/hwilner/hybrid-rag-cag-framework/issues)

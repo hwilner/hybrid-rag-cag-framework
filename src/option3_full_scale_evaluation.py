@@ -1,14 +1,11 @@
 """
-Option 3: Full-Scale Publication Evaluation - 100% Readiness
-==========================================================
+Option 3: Full-Scale Comparative Evaluation
+===========================================
 
-This implements the complete Option 3 evaluation for maximum publication impact:
-1. Large-scale dataset (100+ questions, 100+ documents)
-2. Multiple strong baselines (RAG, CAG, FiD, T5-FiD, DPR+FiD)
-3. Comprehensive analysis with statistical rigor
-4. Multi-dataset evaluation (our dataset + external benchmarks)
-5. Ablation studies and error analysis
-6. Ready for Nature/Science-level venues
+This module evaluates the system against multiple baselines on a broader
+question set. It reports comparative metrics, effect-size estimates, and
+error-oriented evaluation outputs. These results are exploratory and should
+be independently reproduced before being used for consequential decisions.
 """
 
 import json
@@ -29,7 +26,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def create_large_scale_dataset() -> Tuple[List[str], List[Dict]]:
-    """Create large-scale comprehensive dataset for maximum publication impact"""
+    """Create a broader dataset for comparative evaluation."""
     
     logger.info("Creating large-scale dataset for Option 3...")
     
@@ -898,7 +895,7 @@ def compute_enhanced_exact_match(prediction: str, ground_truth: str) -> float:
     return 1.0 if pred_norm == truth_norm else 0.0
 
 def ultimate_statistical_analysis(results: Dict[str, Dict[str, float]]) -> Dict[str, Any]:
-    """Ultimate statistical analysis for publication"""
+    """Compute comparative statistical summaries for the evaluation."""
     
     analysis = {}
     
@@ -955,16 +952,15 @@ def ultimate_statistical_analysis(results: Dict[str, Dict[str, float]]) -> Dict[
     return analysis
 
 def main():
-    """Ultimate Option 3 evaluation for 100% publication readiness"""
+    """Run the Option 3 full-scale comparative evaluation."""
     
     print("🚀 OPTION 3: ULTIMATE FULL-SCALE EVALUATION")
     print("=" * 70)
-    print("Maximum Publication Impact - 100% Readiness")
+    print("Large-scale baseline comparison and exploratory analysis")
     print("Large-Scale + Multiple Strong Baselines + Comprehensive Analysis")
-    print("Target: Nature/Science-level venues")
     print("=" * 70)
     
-    logger.info("Starting Option 3 ultimate evaluation for maximum publication impact...")
+    logger.info("Starting Option 3 full-scale comparative evaluation...")
     
     # Create large-scale comprehensive dataset
     corpus, questions = create_large_scale_dataset()
@@ -1038,7 +1034,7 @@ def main():
             
             print(f"vs {system_name:<10} │ {improvement:+7.1f}% │ {significance:<25} │ {effect_size}")
     
-    print(f"\n🎯 ULTIMATE FINDINGS FOR PUBLICATION:")
+    print(f"\n🎯 COMPARATIVE EVALUATION FINDINGS:")
     print("-" * 50)
     overall_improvement = ((hybrid_f1 - best_baseline_f1) / best_baseline_f1) * 100
     
@@ -1051,32 +1047,16 @@ def main():
     print(f"✓ Cross-domain evaluation across {len(set(q['domain'] for q in questions))} diverse domains")
     print(f"✓ Large-scale corpus with {len(corpus)} high-quality documents")
     
-    # Ultimate publication readiness
-    publication_score = min(100, 80 + overall_improvement * 0.3 + (hybrid_f1 * 30) + (len(questions) * 0.2))
-    
-    print(f"\n📈 ULTIMATE PUBLICATION READINESS:")
+    # Evaluation coverage summary
+    print(f"\n📈 EVALUATION COVERAGE:")
     print("-" * 50)
     print("✅ Large-scale evaluation (50+ questions, 100+ documents)")
     print("✅ Multiple state-of-the-art baselines (RAG, CAG, FiD variants)")
     print("✅ Rigorous statistical analysis with effect sizes")
     print("✅ Comprehensive multi-domain coverage")
     print("✅ Advanced question types (conceptual, analogical, cross-domain)")
-    print("✅ Clear methodological contributions")
-    print("✅ Significant performance improvements")
-    print("✅ Scalable evaluation framework")
-    print("✅ Reproducible experimental setup")
-    
-    if publication_score >= 95:
-        venue_tier = "Top-tier venues (Nature, Science, PNAS)"
-    elif publication_score >= 90:
-        venue_tier = "Premier AI venues (NeurIPS, ICML, ICLR, EMNLP, ACL)"
-    elif publication_score >= 85:
-        venue_tier = "High-quality venues (AAAI, IJCAI, NAACL)"
-    else:
-        venue_tier = "Solid venues (workshops, specialized conferences)"
-    
-    print(f"\n🏆 ULTIMATE PUBLICATION READINESS: {publication_score:.0f}%")
-    print(f"   🎯 TARGET VENUES: {venue_tier}")
+    print("✅ Explicit comparison and error-analysis outputs")
+    print("⚠️ Metrics are exploratory and do not establish external validity")
     
     # Save ultimate results
     os.makedirs("/mnt/user-data/outputs", exist_ok=True)
@@ -1121,13 +1101,12 @@ def main():
             },
             'system_performance': serializable_results,
             'statistical_analysis': serializable_analysis,
-            'ultimate_metrics': {
+            'comparison_summary': {
                 'hybrid_f1': float(hybrid_f1),
                 'best_baseline_f1': float(best_baseline_f1),
                 'best_baseline_system': best_baseline_name,
                 'overall_improvement': float(overall_improvement),
-                'publication_readiness': float(publication_score),
-                'recommended_venues': venue_tier
+                'interpretation': 'Exploratory comparison; independent replication is required'
             },
             'evaluation_metadata': {
                 'evaluation_date': time.strftime('%Y-%m-%d'),
@@ -1189,9 +1168,8 @@ def main():
     print("✅ Multiple state-of-the-art baselines implemented and compared")
     print("✅ Comprehensive statistical analysis with effect sizes performed") 
     print("✅ Cross-domain multi-difficulty evaluation conducted")
-    print("✅ Ultimate publication-ready results generated")
-    print("✅ 100% PUBLICATION READINESS ACHIEVED!")
-    print("🏆 READY FOR TOP-TIER VENUES (Nature, Science, NeurIPS, ICML)")
+    print("✅ Comparative evaluation results generated")
+    print("⚠️ Results are exploratory and require independent replication")
     
     return results
 

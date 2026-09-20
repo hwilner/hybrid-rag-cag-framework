@@ -64,7 +64,6 @@
     "hybrid_f1": 0.631093689912919,
     "best_baseline_f1": 0.6589263712946,
     "best_baseline_system": "CAG",
-    "overall_improvement": -4.223944069349927,
-    "publication_readiness": 95.0
+    "overall_improvement": -4.223944069349927
   }
 }
