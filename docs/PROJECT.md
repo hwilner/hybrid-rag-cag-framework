@@ -1,6 +1,8 @@
 # Project Board — Hybrid RAG-CAG Framework
 
-In-repo substitute for a GitHub Projects board (see note at the bottom). Every backlog
+In-repo mirror of the [live GitHub contribution board](https://github.com/users/hwilner/projects/10).
+**Implementation, tests, data utilities, benchmarks, documentation, and scoped extensions to the
+original project are welcome from all contributors.** Every backlog
 issue is mapped to a phase, status, and its dependencies so newcomers can see at a
 glance what is ready to pick up.
 
@@ -78,7 +80,8 @@ are tracking umbrellas; the work happens in their children.
 
 ---
 
-**Note:** this file mirrors the backlog as an in-repo board. If you convert it to a
-real GitHub Project, keep this file as the textual source of truth or delete it to
-avoid drift. Owner action for a live board: create a GitHub Project, add the repo's
-issues, and group by the phase epics above.
+**Synchronization rule:** the live board mirrors the operational backlog and current
+workflow, while issue bodies and native parent/sub-issue relationships remain authoritative
+for scope, acceptance criteria, boundaries, and dependencies. Keep this file synchronized
+when an issue is added, closed, split, or materially reclassified; do not delete or replace
+an assigned issue during backlog maintenance.
