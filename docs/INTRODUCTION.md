@@ -6,6 +6,10 @@ approaches it. It assumes a technical reader who is new to the project but not
 new to machine learning. A zero-background version lives in
 [EXTENDED_INTRODUCTION.md](EXTENDED_INTRODUCTION.md).
 
+![Concept figure: the Hybrid RAG-CAG pipeline — query, dense retrieval (DPR + FAISS), contrastive reranking, multi-candidate generation, CAG contrastive selection, final answer](figures/concept_figure.svg)
+
+*Figure 1: The Hybrid RAG-CAG pipeline at a glance — retrieved evidence is reranked, a panel of candidate answers is generated, and the CAG layer selects the best by contrasting question-fit and context-fit. (Text fallback: [figures/concept_figure.md](figures/concept_figure.md).)*
+
 ## The problem: LLMs hallucinate and go stale
 
 Large language models store knowledge in their parameters. That has two
