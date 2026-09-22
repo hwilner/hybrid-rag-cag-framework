@@ -1,8 +1,11 @@
 # Extended Introduction: RAG and Hybrid RAG-CAG, Explained From Zero
 
-This guide assumes **no background in machine learning or NLP**. If you can
-use a search engine, you can understand this system. (A denser, technical
-version is in [INTRODUCTION.md](INTRODUCTION.md).)
+This guide assumes **no background in machine learning, math beyond
+arithmetic, or NLP**. Every technical idea is introduced the same way:
+first a tiny example with real numbers you can check by hand, then the
+intuition, and only then the notation — as shorthand for the procedure you
+just saw. (A denser, technical version is in
+[INTRODUCTION.md](INTRODUCTION.md).)
 
 ## The problem in plain terms
 
@@ -31,21 +34,40 @@ surprisingly often.
 ## How the librarian actually finds pages
 
 Computers can't search by meaning directly; they search by numbers. Every
-document is converted into a long list of numbers (an *embedding*) such that
-texts with similar meanings get similar numbers. The question gets the same
-treatment, and the librarian returns the documents whose numbers are closest
-to the question's numbers. This approach, called **Dense Passage Retrieval
-(DPR)** [2], beats old-fashioned keyword search by a wide margin.
+document is converted into a short list of numbers such that texts with
+similar meanings get similar lists. The question gets the same treatment, and
+the librarian returns the documents whose numbers are "closest" to the
+question's numbers.
 
-> **The math, in one sentence (cosine similarity):** treat each embedding as
-> an arrow from the origin, and measure the angle between the question's
-> arrow and each document's arrow — smaller angle means more similar meaning.
-> Friendly explainer: [StatQuest on cosine similarity](https://statquest.org/)
-> and [3Blue1Brown's linear algebra series](https://www.3blue1brown.com/topics/linear-algebra)
-> for the vector intuition.
+**A tiny example with real numbers.** Suppose our whole library has three
+documents, and (in a toy two-number version) meaning is captured by just two
+numbers: "how much about animals" and "how much about cooking."
 
-Fast similarity search over millions of vectors is done with a library called
-FAISS — think of it as an extremely well-organized card catalog.
+- Question "my cat won't eat": `(0.9, 0.1)` — very animal-y, slightly food-y.
+- Doc A, "feline nutrition guide": `(0.8, 0.2)`
+- Doc B, "the history of pasta": `(0.0, 1.0)`
+- Doc C, "training a puppy": `(0.7, 0.0)`
+
+Which document should the librarian fetch? Compare the question to each
+document by multiplying matching entries and adding the results (this is
+called a *dot product*):
+
+- Question·A = 0.9×0.8 + 0.1×0.2 = 0.72 + 0.02 = **0.74**
+- Question·B = 0.9×0.0 + 0.1×1.0 = 0.00 + 0.10 = **0.10**
+- Question·C = 0.9×0.7 + 0.1×0.0 = 0.63 + 0.00 = **0.63**
+
+Doc A wins — exactly what common sense says. That whole comparison is what
+people mean by **cosine similarity**: treat each list as an arrow, and the
+dot product (after dividing by arrow lengths) measures how much the two
+arrows point the same way. The lists themselves are called **embeddings**.
+This retrieval approach, **Dense Passage Retrieval (DPR)** [2], beats
+old-fashioned keyword search by a wide margin, because "feline" and "cat"
+match by meaning even though the words differ.
+
+Real systems use lists of hundreds of numbers instead of two, and fast search
+over millions of them is done with a library called FAISS — think of it as an
+extremely well-organized card catalog. The procedure is exactly the one you
+just did by hand, only bigger.
 
 ## What this repository adds: don't trust the first draft
 
@@ -55,32 +77,45 @@ Here is the key insight of the **Hybrid RAG-CAG** system in
 extra layers of skepticism:
 
 **1. A second librarian's opinion (reranking).** The first search returns ten
-candidate passages; a second, more careful pass re-scores them and keeps only
-the best few. Cheap, and it filters out a lot of noise before the student
-ever sees it.
+candidate passages; a second, more careful pass re-scores them (same dot
+product trick as above) and keeps only the best few. Cheap, and it filters
+out a lot of noise before the student ever sees it.
 
 **2. A panel of candidate answers (the CAG layer).** Instead of writing one
 answer, the student drafts *several* different answers (some careful and
-systematic, some more varied). Then a judge scores every draft on two
-questions: *Does it actually answer the question?* and *Is it supported by
-the pages on the desk?* The draft with the best combined score wins. This
-"generate a panel, then contrast and select" idea is closely related to
-published work like SuRe [5] (candidate answers checked against summaries of
-the evidence) and Adaptive Contrastive Decoding [6] (contrasting outputs to
-cope with noisy retrieved context).
+systematic — "beam search" — and some more varied — "sampling"). Then a judge
+scores every draft on two questions: *Does it actually answer the question?*
+and *Is it supported by the pages on the desk?* The draft with the best
+combined score wins. This "generate a panel, then contrast and select" idea
+is closely related to published work like SuRe [5] (candidate answers checked
+against summaries of the evidence) and Adaptive Contrastive Decoding [6]
+(contrasting outputs to cope with noisy retrieved context).
 
-> **The math, in one sentence (contrastive score / softmax):** each candidate
-> gets a score; scores are turned into probabilities that sum to 1 by
-> exponentiating and normalizing, and training pushes the best candidate's
-> probability up while pushing the others down. Friendly explainer:
-> [StatQuest on softmax](https://statquest.org/).
+**A tiny example of the judging math.** Say the panel has three drafts, and
+the judge's combined score (0.6 × similarity to the question + 0.4 ×
+similarity to the evidence) comes out as:
 
-The training procedure rewards exactly this behavior: the system is
-simultaneously taught to (a) write answers that match correct ones, (b) rank
-the best candidate above the rest, and (c) keep the candidates diverse, so
-the panel doesn't collapse into five copies of the same guess.
+- Draft 1: 2.0, Draft 2: 1.0, Draft 3: 0.0
+
+At test time the system simply picks the biggest number — Draft 1. During
+*training*, the scores are converted into probabilities so the model can be
+nudged: exponentiate each score (e^2.0 ≈ 7.39, e^1.0 ≈ 2.72, e^0.0 = 1.00,
+total ≈ 11.11) and divide:
+
+- Draft 1: 7.39 / 11.11 ≈ **0.67**, Draft 2: ≈ **0.24**, Draft 3: ≈ **0.09**
+
+That recipe — exponentiate, then divide by the total — is all that **softmax**
+is. Training pushes the good draft's probability up and the others down (this
+specific push is the **InfoNCE contrastive loss**; 0.6/0.4 weighting and a
+"temperature" of 0.07 are just dials on the same procedure). The training
+procedure simultaneously teaches the system to (a) write answers that match
+correct ones, (b) rank the best candidate above the rest, and (c) keep the
+candidates diverse, so the panel doesn't collapse into five copies of the
+same guess.
 
 ## The whole pipeline at a glance
+
+![Concept figure: the Hybrid RAG-CAG pipeline — a query flows through dense retrieval, contrastive reranking, multi-candidate generation, and CAG contrastive selection to produce the final answer, with training losses attached to the selection stage.](figures/concept_figure.svg)
 
 ```mermaid
 flowchart LR
@@ -109,6 +144,15 @@ flowchart TB
 
 ## Does it work? Honest numbers
 
+Answers are scored by comparing their words against a reference answer.
+**Tiny example first:** if the system's answer is `"the black cat"` and the
+reference is `"the black dog"`, the answers share 2 words. *Precision* = of
+the 3 words the system produced, 2 were right (2/3 ≈ 0.67). *Recall* = of
+the 3 words that should appear, 2 were found (2/3 ≈ 0.67). **F1** is just a
+single number that punishes you if *either* of those is low — technically the
+harmonic mean, `2 × p × r / (p + r)` — here F1 = 0.67. A sloppy answer (low
+precision) or an incomplete one (low recall) both drag F1 down.
+
 The system was tested on three tiers of increasing difficulty (details in
 [TECHNICAL_EVALUATION_NOTES.md](TECHNICAL_EVALUATION_NOTES.md)):
 
@@ -121,12 +165,6 @@ The system was tested on three tiers of increasing difficulty (details in
 - **Tier 3 (26 PhD-level science questions):** F1 **0.140**, which is only
   **38.1% of the expert reference** (0.368). On hard physics questions the
   system essentially failed.
-
-> **The math, in one sentence (F1):** F1 is the harmonic mean of precision
-> (of the words in the answer, how many are right?) and recall (of the right
-> words, how many were found?), so it punishes answers that are either sloppy
-> or incomplete. Friendly explainer: [Khan Academy's precision/recall material](https://www.khanacademy.org/)
-> and StatQuest's F1 video.
 
 **Caveats that matter:** the datasets are small; the Tier-3 "expert" answers
 are simulated inside the evaluation code, not collected from real humans; and
@@ -142,10 +180,12 @@ stage can be swapped and upgraded. The planned upgrades (full details in
 [ROADMAP.md](ROADMAP.md)) each borrow a published idea:
 
 - **RAG-Fusion** [14]: ask the librarian the same question phrased several
-  different ways, then merge the result lists.
-  > **The math, in one sentence (reciprocal rank fusion):** a document's
-  > merged score is the sum of 1/(rank + constant) across all the lists it
-  > appears in, so documents near the top of several lists win.
+  different ways, then merge the result lists. **Tiny example:** a document
+  ranked 1st in one list and 3rd in another gets merged score
+  1/(1 + 60) + 1/(3 + 60) ≈ 0.0164 + 0.0159 = 0.0323, beating a document that
+  is 1st in only one list (0.0164). Documents near the top of *several* lists
+  win. That recipe — sum 1/(rank + a constant like 60) across lists — is all
+  that **reciprocal rank fusion** is.
 - **CRAG** [8]: a grader that judges whether the fetched pages are any good,
   and triggers a fallback (like a web search) when they're not.
 - **GraphRAG / LightRAG** [12, 13]: besides the page-by-page catalog, build a
@@ -193,7 +233,7 @@ flowchart TB
 3. Izacard & Grave 2021, "Leveraging Passage Retrieval with Generative Models for Open Domain QA" (FiD), EACL 2021. arXiv:2007.01282
 4. Chan et al. 2024, "Don't Do RAG: When Cache-Augmented Generation is All You Need for Knowledge Tasks". arXiv:2412.15605
 5. Kim et al. 2024, "SuRe: Summarizing Retrievals using Answer Candidates for Open-domain QA of LLMs", ICLR 2024. arXiv:2404.13081
-6. Kim et al. 2024, "Adaptive Contrastive Decoding in Retrieval-Augmented Generation for Handling Noisy Contexts" (ACD). arXiv:2408.01084
+6. Kim et al. 2024, "Adaptive Contrastive Decoding in Retrieval-Augmented Generation for Noisy Contexts" (ACD). arXiv:2408.01084
 7. Asai et al. 2023, "Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection", ICLR 2024. arXiv:2310.11511
 8. Yan et al. 2024, "Corrective Retrieval Augmented Generation" (CRAG). arXiv:2401.15884
 9. Yao et al. 2022, "ReAct: Synergizing Reasoning and Acting in Language Models", ICLR 2023. arXiv:2210.03629
