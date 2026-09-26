@@ -292,168 +292,77 @@ class StateOfTheArtRAGSystem:
         return self._advanced_extract_answer(question, relevant_docs)
     
     def _advanced_extract_answer(self, question: str, docs: List[str]) -> str:
-        """Advanced answer extraction with multiple strategies"""
-        q_lower = question.lower()
-        
-        # Pattern-based extraction for common question types
-        answer = self._pattern_based_extraction(q_lower)
-        if answer and answer != "No pattern match":
-            return answer
-        
-        # Sentence-level extraction
+        """Sentence-level extractive answer selection.
+
+        Previously this method used a hardcoded dictionary mapping
+        substrings to gold answers (e.g. ``'capital of france': 'Paris'``).
+        That made the baseline comparison meaningless. The dictionary has
+        been removed; extraction is now based purely on retrieval scores.
+        """
         all_sentences = []
         for doc in docs:
             sentences = [s.strip() for s in doc.split('.') if len(s.strip()) > 10]
             all_sentences.extend(sentences)
         
         if not all_sentences:
-            return "Retrieved context processed"
+            return ""
         
-        # Score sentences
+        # Score sentences by retrieval overlap + length prior
+        q_words = set(question.lower().split())
         best_sentence = ""
-        best_score = 0
-        
-        q_words = set(q_lower.split())
+        best_score = -1.0
         for sentence in all_sentences:
             s_words = set(sentence.lower().split())
-            
-            # Multiple scoring factors
-            overlap_score = len(q_words & s_words) / len(q_words) if q_words else 0
-            length_score = min(1.0, len(sentence.split()) / 20)  # Prefer moderate length
-            position_score = 0.1  # Could be enhanced with position information
-            
-            total_score = overlap_score * 0.7 + length_score * 0.2 + position_score * 0.1
-            
+            overlap = len(q_words & s_words) / len(q_words) if q_words else 0
+            length_score = min(1.0, len(sentence.split()) / 20)
+            total_score = overlap * 0.7 + length_score * 0.2 + 0.1
             if total_score > best_score:
                 best_score = total_score
                 best_sentence = sentence
-        
-        return best_sentence if best_sentence else "Advanced RAG extraction"
+        return best_sentence
     
-    def _pattern_based_extraction(self, q_lower: str) -> str:
-        """Comprehensive pattern-based extraction"""
-        patterns = {
-            'capital of france': 'Paris',
-            'created python': 'Guido van Rossum',
-            'python programming': 'Guido van Rossum', 
-            'ai stand for': 'Artificial intelligence',
-            'tallest mountain': 'Mount Everest',
-            'highest mountain': 'Mount Everest',
-            'mona lisa': 'Leonardo da Vinci',
-            'painted mona lisa': 'Leonardo da Vinci',
-            'james naismith': 'Basketball',
-            'invented basketball': 'Basketball',
-            'longest river': 'Amazon River',
-            'discovered penicillin': 'Alexander Fleming',
-            'largest hot desert': 'Sahara Desert',
-            'sahara desert': 'Sahara Desert',
-            'invented world wide web': 'Tim Berners-Lee',
-            'theory physics': 'Albert Einstein',
-            'relativity': 'Albert Einstein',
-            'eiffel tower': 'The Eiffel Tower',
-            'gustave eiffel': 'The Eiffel Tower',
-            'nobel prize two': 'Marie Curie',
-            'olympic games 1896': 'Athens, Greece',
-            'photosynthesis': 'Photosynthesis',
-            'glucose oxygen': 'Photosynthesis',
-            'roman empire': 'Roman Empire',
-            'britain north africa': 'Roman Empire',
-            'javascript web': 'JavaScript',
-            'html css': 'JavaScript',
-            'michelangelo': 'Michelangelo',
-            'sistine chapel': 'Michelangelo',
-            'david statue': 'Michelangelo',
-            'world war 1939': 'World War II',
-            'himalayas': 'Himalayas',
-            'everest himalayas': 'Himalayas'
-        }
-        
-        for pattern, answer in patterns.items():
-            if pattern in q_lower:
-                return answer
-        
-        return "No pattern match"
+    def _pattern_based_extraction(self, q_lower: str) -> str:  # pragma: no cover
+        """Removed: previously returned hardcoded gold answers.
+
+        Kept as a stub so any external caller that imports it gets an
+        explicit signal that the lookup table has been removed.
+        """
+        return ""
 
 class AdvancedCAGSystem:
-    """Advanced CAG with sophisticated generation"""
+    """Honest extractive CAG baseline.
+
+    The previous version of this class embedded a hardcoded dictionary
+    (``{'capital_france': 'Paris', 'python_creator': 'Guido van Rossum', ...}``)
+    that returned gold answers directly when the question matched a
+    keyword. That made the baseline comparison meaningless: every
+    question with a dictionary entry scored 100% trivially.
+
+    The dictionary has been removed. This baseline now does what CAG
+    actually does in the literature: it picks a relevant span from the
+    corpus (no generation), scored by keyword overlap with the question.
+    """
     
     def __init__(self):
         self.corpus = None
-        self.knowledge_base = {}
         
     def initialize(self, corpus: List[str]):
-        """Initialize with knowledge extraction"""
         self.corpus = corpus
-        self._build_knowledge_base()
-        logger.info("Advanced CAG system initialized with knowledge base")
-        
-    def _build_knowledge_base(self):
-        """Build comprehensive knowledge base from corpus"""
-        # Extract key facts and relationships
-        for doc in self.corpus:
-            doc_lower = doc.lower()
-            
-            # Extract entity relationships
-            if 'capital' in doc_lower and 'france' in doc_lower and 'paris' in doc_lower:
-                self.knowledge_base['capital_france'] = 'Paris'
-            if 'guido van rossum' in doc_lower and 'python' in doc_lower:
-                self.knowledge_base['python_creator'] = 'Guido van Rossum'
-            if 'artificial intelligence' in doc_lower:
-                self.knowledge_base['ai_definition'] = 'Artificial intelligence'
-            if 'mount everest' in doc_lower and 'highest' in doc_lower:
-                self.knowledge_base['highest_mountain'] = 'Mount Everest'
-            if 'leonardo da vinci' in doc_lower and 'mona lisa' in doc_lower:
-                self.knowledge_base['mona_lisa_artist'] = 'Leonardo da Vinci'
-            if 'james naismith' in doc_lower and 'basketball' in doc_lower:
-                self.knowledge_base['basketball_inventor'] = 'Basketball'
-            
-            # Add more knowledge extraction patterns...
-            
-    def generate_answer(self, question: str) -> str:
-        """Advanced generation with knowledge base and reasoning"""
-        q_lower = question.lower()
-        
-        # Direct knowledge lookup
-        if 'capital' in q_lower and 'france' in q_lower:
-            return self.knowledge_base.get('capital_france', 'Paris')
-        elif 'created python' in q_lower or 'python programming' in q_lower:
-            return self.knowledge_base.get('python_creator', 'Guido van Rossum')
-        elif 'ai stand for' in q_lower:
-            return self.knowledge_base.get('ai_definition', 'Artificial intelligence')
-        elif 'tallest mountain' in q_lower or 'highest mountain' in q_lower:
-            return self.knowledge_base.get('highest_mountain', 'Mount Everest')
-        elif 'mona lisa' in q_lower and 'painted' in q_lower:
-            return self.knowledge_base.get('mona_lisa_artist', 'Leonardo da Vinci')
-        elif 'james naismith' in q_lower or ('basketball' in q_lower and 'invented' in q_lower):
-            return self.knowledge_base.get('basketball_inventor', 'Basketball')
-        
-        # Compositional reasoning for complex questions
-        elif 'machine learning' in q_lower and 'artificial intelligence' in q_lower:
-            if 'deep learning' in q_lower:
-                return 'AI is the broadest field, machine learning is a subset of AI, and deep learning is a specialized subset of machine learning'
-            else:
-                return 'Machine learning is a subset of artificial intelligence'
-        elif 'photosynthesis' in q_lower and 'cellular respiration' in q_lower:
-            return 'They are complementary processes where photosynthesis produces glucose and oxygen that cellular respiration uses for energy'
-        
-        # Generate based on context
-        return self._contextual_generation(question)
+        logger.info("Advanced CAG baseline (extractive, no dictionary) initialised.")
     
-    def _contextual_generation(self, question: str) -> str:
-        """Generate contextually appropriate answers"""
-        q_lower = question.lower()
-        
-        # Question type analysis
-        if question.startswith('What'):
-            return "Generated factual response based on knowledge"
-        elif question.startswith('Who'):
-            return "Generated person identification based on context"
-        elif question.startswith('How'):
-            return "Generated explanation of process or relationship"
-        elif question.startswith('Where'):
-            return "Generated location information"
-        else:
-            return "Generated comprehensive response"
+    def generate_answer(self, question: str) -> str:
+        """Best-sentence extraction by question-keyword overlap."""
+        q_words = set(question.lower().split())
+        if not q_words or not self.corpus:
+            return ""
+        best, best_score = "", -1.0
+        for doc in self.corpus:
+            d_words = set(doc.lower().split())
+            score = len(q_words & d_words) / len(q_words)
+            if score > best_score:
+                best_score = score
+                best = doc
+        return best
 
 class MultipassageFiDSystem:
     """Advanced FiD with multiple passages and fusion"""
@@ -512,47 +421,23 @@ class MultipassageFiDSystem:
         return selected_passages
     
     def _advanced_fusion_generation(self, question: str, passages: List[str]) -> str:
-        """Advanced fusion with cross-passage reasoning"""
-        q_lower = question.lower()
-        
-        # Extract information from all passages
-        extracted_info = {}
-        
+        """Honest extractive fusion.
+
+        Previous version hardcoded answers (``'Paris'``, ``'Albert Einstein'``,
+        etc.) when substrings matched. The dictionary has been removed; we
+        now return the retrieved passage with the highest question-token
+        overlap, which is what simple extractive fusion actually does.
+        """
+        q_words = set(question.lower().split())
+        if not q_words or not passages:
+            return ""
+        best, best_score = "", -1.0
         for passage in passages:
-            p_lower = passage.lower()
-            
-            # Entity and fact extraction
-            if 'paris' in p_lower and ('capital' in q_lower or 'france' in q_lower):
-                extracted_info['location'] = 'Paris'
-            if 'guido van rossum' in p_lower and 'python' in q_lower:
-                extracted_info['person'] = 'Guido van Rossum'
-            if 'einstein' in p_lower and 'theory' in q_lower:
-                extracted_info['scientist'] = 'Albert Einstein'
-            if 'marie curie' in p_lower and 'nobel' in q_lower:
-                extracted_info['nobel_winner'] = 'Marie Curie'
-            
-            # Relationship extraction for complex questions
-            if 'machine learning' in p_lower and 'artificial intelligence' in p_lower:
-                extracted_info['ml_ai_relationship'] = 'subset relationship'
-            if 'photosynthesis' in p_lower and 'cellular respiration' in q_lower:
-                extracted_info['biological_processes'] = 'complementary energy processes'
-        
-        # Generate fused answer
-        if 'location' in extracted_info:
-            return extracted_info['location']
-        elif 'person' in extracted_info:
-            return extracted_info['person']
-        elif 'scientist' in extracted_info:
-            return extracted_info['scientist']
-        elif 'nobel_winner' in extracted_info:
-            return extracted_info['nobel_winner']
-        elif 'ml_ai_relationship' in extracted_info:
-            return 'Machine learning is a subset of artificial intelligence based on multi-passage analysis'
-        elif 'biological_processes' in extracted_info:
-            return 'Photosynthesis and cellular respiration are complementary biological energy processes'
-        
-        # Default fusion response
-        return f"Multi-passage FiD fusion from {len(passages)} sources"
+            score = len(q_words & set(passage.lower().split())) / len(q_words)
+            if score > best_score:
+                best_score = score
+                best = passage
+        return best
 
 class T5FiDSystem:
     """T5-style FiD implementation"""
@@ -586,22 +471,14 @@ class T5FiDSystem:
         return [self.corpus[i] for i in top_indices]
     
     def _t5_generate(self, question: str, passages: List[str]) -> str:
-        """T5-style generation"""
-        # Simulate T5's generation approach
-        combined_context = " [SEP] ".join(passages)
-        
-        q_lower = question.lower()
-        
-        # T5-style pattern matching
-        if 'capital of france' in q_lower:
-            return 'Paris'
-        elif 'python' in q_lower and 'created' in q_lower:
-            return 'Guido van Rossum'
-        elif 'ai stand for' in q_lower:
-            return 'Artificial intelligence'
-        
-        # Default T5-style generation
-        return "T5-FiD generated response"
+        """Honest T5-style generation stub.
+
+        The previous version returned hardcoded answers ('Paris',
+        'Guido van Rossum') when specific keywords matched. Removed:
+        we now return the top retrieved passage, matching what a real
+        extractive T5-FiD pipeline would do at minimum.
+        """
+        return passages[0] if passages else ""
 
 class DPRFiDSystem:
     """DPR + FiD implementation"""
@@ -643,24 +520,22 @@ class DPRFiDSystem:
         return [self.corpus[i] for i in top_indices]
     
     def _fid_generation(self, question: str, passages: List[str]) -> str:
-        """FiD-style generation after DPR retrieval"""
-        q_lower = question.lower()
-        
-        # Analyze all passages for consistent information
-        evidence = []
+        """Honest extractive FiD-style answer.
+
+        Previous version used a hardcoded evidence list with gold answers.
+        Now we return the passage with the highest question-token overlap,
+        matching what a simple extractive FiD would emit.
+        """
+        q_words = set(question.lower().split())
+        if not q_words or not passages:
+            return ""
+        best, best_score = "", -1.0
         for passage in passages:
-            if 'paris' in passage.lower() and ('capital' in q_lower or 'france' in q_lower):
-                evidence.append('Paris')
-            elif 'guido van rossum' in passage.lower() and 'python' in q_lower:
-                evidence.append('Guido van Rossum')
-            elif 'einstein' in passage.lower() and 'theory' in q_lower:
-                evidence.append('Albert Einstein')
-        
-        # Return most consistent evidence
-        if evidence:
-            return max(set(evidence), key=evidence.count)
-        
-        return "DPR+FiD generated answer"
+            score = len(q_words & set(passage.lower().split())) / len(q_words)
+            if score > best_score:
+                best_score = score
+                best = passage
+        return best
 
 class UltimateHybridSystem:
     """Ultimate Hybrid RAG-CAG system with all enhancements"""
@@ -711,15 +586,12 @@ class UltimateHybridSystem:
         relevance = len(q_words & a_words) / len(q_words) if q_words else 0
         confidence += relevance * 0.3
         
-        # System-specific bonuses
+        # System-specific bonuses (removed the hardcoded "Paris/Einstein/..."
+        # bonus that previously biased the Hybrid toward dictionary hits)
         if system_type == 'rag':
-            # RAG bonus for specific factual answers
-            if any(word in answer for word in ['Paris', 'Einstein', 'Leonardo', 'Basketball', 'Python']):
-                confidence += 0.2
+            pass
         elif system_type == 'cag':
-            # CAG bonus for explanatory content
-            if any(word in answer.lower() for word in ['is', 'are', 'process', 'system', 'method']):
-                confidence += 0.15
+            pass
         
         # Factual answer patterns
         if re.match(r'^[A-Z][a-zA-Z\s]+$', answer.strip()) and len(answer.split()) <= 5:

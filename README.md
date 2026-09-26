@@ -1,285 +1,197 @@
-# Hybrid RAG-CAG Framework for Enhanced Question Answering
+# Hybrid RAG-CAG Framework for Question Answering
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-1.9+-red.svg)](https://pytorch.org/)
 
-Experimental implementation of a Hybrid RAG-CAG framework for enhanced question answering.
-
-## 🔬 Overview
-
-This repository contains the complete implementation of our Hybrid RAG-CAG (Retrieval-Augmented Generation and Contrastive Answer Generation) framework, which achieves:
-
-- **57.5% F1 improvement** over standalone RAG on standard datasets
-- **38.1% of human expert performance** on PhD-level scientific questions
-- **Statistical significance** across all evaluation tiers
-- **State-of-the-art comparison** with FiD, T5-FiD, and DPR+FiD baselines
-
-## 📊 Key Results
-
-### Three-Tier Evaluation Performance
-
-| Evaluation Tier | Dataset | Hybrid F1 | Best Baseline | Improvement |
-|-----------------|---------|-----------|---------------|-------------|
-| **Tier 1: Foundational** | 12 questions | **0.389** | 0.247 (RAG) | +57.5% |
-| **Tier 2: Enhanced** | 55 questions | **0.276** | 0.369 (Advanced RAG) | Competitive |
-| **Tier 3: Expert-Level** | 26 scientific Qs | **0.140** | 0.368 (Human Expert) | 38.1% of expert |
-
-### Performance by Domain (Tier 3)
-
-| Domain | Hybrid F1 | Expert F1 | Success Rate |
-|--------|-----------|-----------|--------------|
-| Earth Science | 0.201 | 0.402 | 33% |
-| Biology | 0.189 | 0.412 | 20% |
-| Chemistry | 0.156 | 0.387 | 20% |
-| Mathematics | 0.132 | 0.348 | 20% |
-| Physics | 0.098 | 0.329 | 0% |
-
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/hwilner/hybrid-rag-cag-framework.git
-cd hybrid-rag-cag-framework
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### Basic Usage
-
-```python
-from hybrid_rag_cag_system import HybridRAGCAGSystem
-
-# Initialize the system
-system = HybridRAGCAGSystem(
-    model_name="sentence-transformers/all-mpnet-base-v2",
-    embedding_dim=768
-)
-
-# Index your corpus
-corpus = [
-    "Paris is the capital of France.",
-    "Machine learning is a subset of AI.",
-    # ... your documents
-]
-system.index_corpus(corpus)
-
-# Ask questions
-question = "What is the capital of France?"
-answer = system.answer_question(question)
-print(f"Answer: {answer}")
-```
-
-### Running Evaluations
-
-#### Tier 1: Foundational Validation
-```bash
-python train_and_evaluate.py --evaluation_tier 1
-```
-
-#### Tier 2: Enhanced Evaluation (55 questions, 6 systems)
-```bash
-python option3_full_scale_evaluation.py
-```
-
-#### Tier 3: Expert-Level Evaluation (Human comparison)
-```bash
-python expert_evaluation.py
-```
-
-## 📁 Repository Structure
-
-```
-hybrid-rag-cag-framework/
-├── README.md                           # This file
-├── requirements.txt                    # Python dependencies
-├── LICENSE                            # MIT License
-│
-├── src/
-│   ├── hybrid_rag_cag_system.py      # Core hybrid system implementation
-│   ├── train_and_evaluate.py         # Training and evaluation pipeline
-│   ├── option3_full_scale_evaluation.py  # Tier 2 evaluation
-│   └── expert_evaluation.py              # Tier 3 expert evaluation
-│
-├── data/
-│   ├── tier1_dataset.json            # Foundational validation dataset
-│   ├── tier2_dataset.json            # Enhanced evaluation dataset
-│   └── tier3_scientific_dataset.json # Expert-level scientific questions
-│
-├── results/
-│   ├── tier1_results.json            # Foundational evaluation results
-│   ├── tier2_results.json            # Enhanced evaluation results
-│   ├── tier3_expert_comparison.json  # Human expert comparison results
-│   └── enhanced_discussion_analysis.json  # Comprehensive analysis
-│
-├── paper/
-│   └── TECHNICAL_EVALUATION_NOTES.md       # Evaluation notes and limitations
-│
-└── docs/
-    ├── INSTALLATION.md               # Detailed installation guide
-    ├── USAGE.md                      # Comprehensive usage examples
-    ├── EVALUATION.md                 # Evaluation methodology
-    └── API_REFERENCE.md              # Complete API documentation
-```
-
-## 🔧 System Architecture
-
-### Core Components
-
-1. **Dense Retrieval Component**
-   - Bi-encoder architecture with contrastive learning
-   - FAISS-based efficient similarity search
-   - SVD dimension reduction for noise filtering
-
-2. **Contrastive Reranking**
-   - Improves relevance of retrieved passages
-   - Learned reranking weights
-   - Multi-stage retrieval pipeline
-
-3. **Multi-Candidate Generation**
-   - Generates multiple answer candidates
-   - Learned scoring for optimal selection
-   - Confidence estimation
-
-4. **Dynamic Fusion Mechanism**
-   - Adaptive weighting: `H(q) = α(q) * R(q, D) + (1-α(q)) * G(q)`
-   - Question complexity adaptation
-   - Confidence-based fusion
-
-### Joint Optimization
-
-```
-L_total = L_retrieval + λ₁ * L_generation + λ₂ * L_fusion
-```
-
-## 📊 Evaluation Methodology
-
-### Three-Tier Evaluation Framework
-
-Our comprehensive evaluation consists of three progressive tiers:
-
-#### Tier 1: Foundational Validation
-- **Purpose:** Establish core system effectiveness
-- **Dataset:** 12 diverse questions across multiple domains
-- **Baselines:** Standalone RAG, CAG, simple ensemble
-- **Key Metric:** 57.5% F1 improvement over RAG
-
-#### Tier 2: Enhanced Evaluation
-- **Purpose:** Compare with state-of-the-art systems
-- **Dataset:** 55 questions across 14 domains
-- **Baselines:** Advanced RAG, Enhanced CAG, FiD, T5-FiD, DPR+FiD
-- **Key Metric:** Statistical significance across all comparisons
-
-#### Tier 3: Expert-Level Scientific Evaluation
-- **Purpose:** Human expert comparison on frontier questions
-- **Dataset:** 26 PhD-level scientific questions
-- **Baselines:** Same as Tier 2 + 26 domain expert responses
-- **Key Metric:** 38.1% of human expert performance
-
-## 🔬 Reproducing Results
-
-### Complete Reproduction
-
-```bash
-# Run all three evaluation tiers
-./scripts/run_all_evaluations.sh
-
-# Results will be saved to results/ directory
-```
-
-### Individual Tier Reproduction
-
-```bash
-# Tier 1 (Takes ~5 minutes)
-python train_and_evaluate.py
-
-# Tier 2 (Takes ~15 minutes)
-python option3_full_scale_evaluation.py
-
-# Tier 3 (Takes ~20 minutes)
-python expert_evaluation.py
-```
-
-### Expected Results
-
-After running evaluations, you should see:
-
-- **Tier 1:** Hybrid F1 ≈ 0.389 (±0.05)
-- **Tier 2:** Hybrid F1 ≈ 0.276 (±0.05)
-- **Tier 3:** Hybrid F1 ≈ 0.140 (±0.03), Expert F1 ≈ 0.368
-
-## 📈 Performance Analysis
-
-### Strengths
-✅ **Factual Accuracy:** Excellent on straightforward factual queries (90% success on easy questions)  
-✅ **Efficiency:** Competitive response times (0.003s average)  
-✅ **Scalability:** Linear scaling with corpus size  
-✅ **Robustness:** Consistent performance across different dataset sizes
-
-### Limitations
-⚠️ **Complex Reasoning:** Struggles with multi-hop reasoning (0% on very hard questions)  
-⚠️ **Domain Expertise:** Performance degrades on highly specialized topics  
-⚠️ **Abstract Concepts:** Limited on theoretical physics and mathematics  
-⚠️ **Knowledge Coverage:** Gaps in cutting-edge scientific domains
-
-### Improvement Roadmap
-
-**Immediate (3-6 months):**
-- Scientific literature pre-training: +15-25% expected gain
-- Confidence calibration: +5-10% error reduction
-
-**Medium-term (6-18 months):**
-- Reasoning modules: +10-20% on complex questions
-- Domain fine-tuning: +25-40% within domains
-- Multimodal integration: +20-30% on STEM
-
-**Long-term (2-5 years):**
-- Neural-symbolic fusion: +40-60% logical reasoning
-- Causal understanding: +50-70% mechanistic questions
-- Meta-learning: +30-50% generalization
-
-## 🤝 Contributing
-
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-### Areas for Contribution
-
-- **Domain-specific enhancements:** Add specialized knowledge bases
-- **Reasoning modules:** Implement multi-step reasoning components
-- **Evaluation datasets:** Create new challenging question sets
-- **Baseline comparisons:** Add comparisons with latest models
-- **Documentation:** Improve guides and examples
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Domain experts who participated in the human evaluation study
-- Open-source community for foundational libraries (PyTorch, Transformers, FAISS)
-- Scientific community for feedback and validation
-
-## 📧 Contact
-
-- **Author:** H. Wilner
-- **GitHub:** [@hwilner](https://github.com/hwilner)
-- **Repository:** [hybrid-rag-cag-framework](https://github.com/hwilner/hybrid-rag-cag-framework)
-
-## 🔗 Links
-
-- **Evaluation notes:** [Technical Evaluation Notes](docs/TECHNICAL_EVALUATION_NOTES.md)
-- **Results:** [Complete Evaluation Results](results/)
-- **Documentation:** [Full Documentation](docs/)
-- **Issues:** [Report Issues](https://github.com/hwilner/hybrid-rag-cag-framework/issues)
+A reference implementation of a **Hybrid RAG + CAG** framework for extractive
+question answering over a small, in-memory corpus.
+
+> **Notation.** "CAG" here means **C**ontrastive **A**nswer **G**eneration
+> (multi-candidate decoding + learned reranking). It is **not** the same as
+> "Cache-Augmented Generation" (Chan et al., 2024; `hhhuang/CAG`), which
+> preloads the entire knowledge base into the LLM's context and caches its
+> KV state. Both are valid research directions; this repo implements the
+> former.
 
 ---
 
-**Star ⭐ this repository if you find it helpful!**
+## What this repo actually does
+
+1. **Dense retrieval** — a frozen `sentence-transformers/all-mpnet-base-v2`
+   encoder + a FAISS index over the corpus. No retriever training.
+2. **Contrastive reranking** — second-pass cosine rerank by the same
+   encoder (frozen weights).
+3. **Multi-candidate generation** — BART-large produces 5 candidates per
+   question via beam + nucleus sampling.
+4. **Contrastive candidate selection** — the candidate whose embedding is
+   closest (cosine) to the question+context gets returned.
+
+The differentiable component is BART's seq2seq cross-entropy
+(`BartForConditionalGeneration.forward(labels=...)`) against the gold
+answer given `(question, retrieved context)` as input. The retriever,
+reranker, and contrastive-selection head are all frozen, so the only
+learnable parameters are BART's.
+
+> **Honest claim.** This repo's "joint training" is therefore a BART
+> fine-tune conditioned on a frozen-retrieval pipeline. To upgrade to
+> truly joint retrieval + generation training, replace the frozen
+> sentence-transformer with a DPR-style bi-encoder that has a learnable
+> projection head and use in-batch negatives.
+
+---
+
+## Quick start
+
+```bash
+git clone https://github.com/hwilner/hybrid-rag-cag-framework.git
+cd hybrid-rag-cag-framework
+pip install -r requirements.txt
+
+# End-to-end sanity check (~30 seconds, CPU-only, downloads BART-large):
+python src/hybrid_rag_cag_system.py --smoke
+```
+
+### Programmatic use
+
+```python
+from src.hybrid_rag_cag_system import HybridRAGCAGSystem
+
+system = HybridRAGCAGSystem()
+system.index_corpus([
+    "Paris is the capital of France.",
+    "The Eiffel Tower was constructed in 1889 in Paris.",
+    # ... your documents
+])
+print(system.answer_question("What is the capital of France?"))
+```
+
+For training, use the lower-level `HybridRAGCAG` `nn.Module` directly:
+
+```python
+from src.hybrid_rag_cag_system import HybridRAGCAG, HybridConfig
+
+model = HybridRAGCAG(HybridConfig())
+model.retriever.build_index(corpus)
+out = model(questions, gold_answers=gold)   # out['total_loss'] is differentiable
+out['total_loss'].backward()                # updates BART only
+optimizer.step()
+```
+
+---
+
+## Repository layout
+
+```
+hybrid-rag-cag-framework/
+├── README.md                                 # this file
+├── REVIEW.md                                 # claim-by-claim audit of v1
+├── requirements.txt
+├── LICENSE
+└── src/
+    ├── hybrid_rag_cag_system.py              # core nn.Module + HybridRAGCAGSystem façade + smoke test
+    ├── train_and_evaluate.py                 # training loop on HotpotQA-style data
+    ├── option3_full_scale_evaluation.py      # Tier-2 baselines comparison (toy baselines, see note)
+    └── expert_evaluation.py                  # Tier-3 expert comparison on the 26-question scientific set
+```
+
+> The `data/`, `results/`, `paper/`, `docs/`, and `scripts/` directories
+> referenced in earlier versions of this README are **not** shipped.
+> The corpora, question sets, and expert responses are inlined in
+> `option3_full_scale_evaluation.py` (`create_large_scale_dataset`) and
+> `expert_evaluation.py` (`create_real_world_scientific_dataset`,
+> `create_expert_responses`).
+
+---
+
+## Evaluation
+
+The repo ships three scripts, each with its own dataset and baseline set:
+
+| Tier | Script | What it does |
+|------|--------|--------------|
+| 1 | `train_and_evaluate.py` | BART fine-tune on HotpotQA-style data |
+| 2 | `option3_full_scale_evaluation.py` | Compare hybrid against 5 baselines on a 55-question, 14-domain inlined set |
+| 3 | `expert_evaluation.py` | Compare hybrid against inlined expert responses on a 26-question scientific set; `scipy.stats.ttest_rel` for paired significance |
+
+### About the baselines
+
+`option3_full_scale_evaluation.py` ships six "systems": `RAG`, `CAG`, `FiD`,
+`T5-FiD`, `DPR+FiD`, and `Hybrid`. **These are *not* faithful re-implementations
+of the original papers.** They are simple, hand-rolled extractive baselines
+built on TF-IDF + SVD + sentence-level scoring. They are useful as
+*sanity checks* (does the hybrid beat a sensible naive pipeline?) but
+should not be cited as a comparison with the original FiD/T5-FiD/DPR+FiD
+results. If you want a literature-grade comparison, swap each baseline
+class for an actual `transformers` model.
+
+### Reproducing numbers
+
+```bash
+# Tier 1 (requires hotpot_train_v1.1.json / hotpot_dev_distractor_v1.json
+# from https://hotpotqa.github.io/)
+python src/train_and_evaluate.py \
+    --mode both \
+    --train_data hotpot_train_v1.1.json \
+    --dev_data hotpot_dev_distractor_v1.json
+
+# Tier 2 (self-contained; runs in <2 min on a laptop)
+python src/option3_full_scale_evaluation.py
+
+# Tier 3 (self-contained; runs in <2 min on a laptop)
+python src/expert_evaluation.py
+```
+
+Reported numbers in earlier versions of this README (Tier-1 Hybrid F1
+≈0.389, Tier-2 Hybrid F1 ≈0.276, Tier-3 Hybrid F1 ≈0.140) come from these
+exact scripts on the inlined data; the Tier-2 result is actually a
+**regression** against the strongest inlined baseline (Advanced RAG
+≈0.369 on the same set), which is preserved in the per-question output
+of `option3_full_scale_evaluation.py` for inspection.
+
+---
+
+## Architectural notes
+
+### Why is the joint loss `L_total = λ_gen·L_BART + λ_contrast·L_InfoNCE + λ_div·L_pairwise`?
+
+* `L_BART` is the only term that updates parameters (BART). It's a
+  standard seq2seq cross-entropy: `P(gold | question + retrieved_context)`.
+* `L_InfoNCE` and `L_pairwise` operate on the frozen sentence-transformer
+  embeddings, so they contribute no gradient to the model. They are kept
+  for monitoring and as drop-in replacements when the encoder becomes
+  learnable.
+
+If you want to make those terms trainable:
+1. Add a learnable projection head on top of `self.sentence_encoder`.
+2. Replace the `.detach()`-implicit `no_grad` block in
+   `HybridRAGCAG.compute_losses` with a real forward pass that lets
+   gradients flow into the encoder.
+3. Add in-batch negatives to `compute_contrastive_loss`.
+
+### Why is the reranker just a second-pass cosine?
+
+Because the underlying encoder is frozen. A learned reranker would need
+either labelled `(query, relevant_passage)` pairs or a self-supervised
+signal (e.g. RAG-style end-to-end loss where the rerank score is
+conditioned on the downstream answer F1).
+
+---
+
+## Limitations
+
+* The system is **not** trained jointly — only BART updates. To do joint
+  training, see the upgrade path above.
+* The baselines in `option3_full_scale_evaluation.py` are **toy**
+  extractive systems, not literature baselines. Do not cite Tier-2
+  numbers as a comparison with FiD/T5-FiD/DPR+FiD.
+* Datasets and results directories are not shipped (see Repository
+  layout note).
+* No hyperparameter search, no model selection, no held-out test set
+  with bootstrapped confidence intervals.
+
+---
+
+## License
+
+MIT — see `LICENSE`.
