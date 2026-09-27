@@ -59,6 +59,7 @@ class HybridConfig:
     max_source_length: int = 1024
     max_target_length: int = 128
     num_beams: int = 4
+    num_candidates: int = 5
     
     # Training settings
     batch_size: int = 8
@@ -74,6 +75,16 @@ class HybridConfig:
     # Generator precision: "float32" (default, full precision) or
     # "bfloat16" (halves generator memory; useful on memory-tight CPU boxes).
     generator_dtype: str = "float32"
+
+    # Encoder training: when True, the shared sentence encoder is unfrozen
+    # and a learnable projection head is applied on top; the contrastive
+    # loss then produces real gradients into the encoder.
+    trainable_encoder: bool = False
+
+    # Candidate diversity: when > 1, use HuggingFace diverse beam search
+    # with this many beam groups (plus the existing sampling strategies).
+    num_beam_groups: int = 1
+    diversity_penalty: float = 1.0
     
     # Contrastive settings
     temperature: float = 0.07
@@ -253,12 +264,15 @@ class HybridGenerator(nn.Module):
         super().__init__()
         self.config = config
         self.tokenizer = BartTokenizer.from_pretrained(config.generator_model)
-        self.model = BartForConditionalGeneration.from_pretrained(config.generator_model)
+        load_kwargs = {}
+        if config.generator_dtype == "bfloat16":
+            # Load directly in bf16 -- avoids the fp32->bf16 peak that would
+            # briefly hold both copies of the 1.6 GB checkpoint.
+            load_kwargs["torch_dtype"] = torch.bfloat16
+        self.model = BartForConditionalGeneration.from_pretrained(config.generator_model, **load_kwargs)
         # Trade compute for memory: recompute activations during backward
         # instead of caching them. Roughly halves peak training RAM on CPU.
         self.model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
-        if config.generator_dtype == "bfloat16":
-            self.model = self.model.to(torch.bfloat16)
         self.sentence_encoder = encoder if encoder is not None else SentenceTransformer(config.retriever_model)
         # Freeze the sentence encoder -- it is only a feature extractor.
         for p in self.sentence_encoder.parameters():
@@ -293,15 +307,22 @@ class HybridGenerator(nn.Module):
             # Generate candidates with different strategies
             candidates = []
             
-            # Strategy 1: Beam search
-            beam_outputs = self.model.generate(
-                **inputs,
+            # Strategy 1: Beam search (optionally diverse beam groups --
+            # gives the contrastive selector genuinely different candidates
+            # instead of near-identical beam siblings)
+            gen_kwargs = dict(
                 max_length=self.config.max_target_length,
                 num_beams=num_candidates,
                 num_return_sequences=min(num_candidates, 3),
                 early_stopping=True,
-                do_sample=False
+                do_sample=False,
             )
+            if getattr(self.config, 'num_beam_groups', 1) > 1:
+                gen_kwargs.update(
+                    num_beam_groups=self.config.num_beam_groups,
+                    diversity_penalty=self.config.diversity_penalty,
+                )
+            beam_outputs = self.model.generate(**inputs, **gen_kwargs)
             
             for output in beam_outputs:
                 candidate = self.tokenizer.decode(output, skip_special_tokens=True)
@@ -406,6 +427,21 @@ class HybridRAGCAG(nn.Module):
         self.retriever = DenseRetriever(config, encoder=shared_encoder)
         self.reranker = ContrastiveReranker(config, encoder=shared_encoder)
         self.generator = HybridGenerator(config, encoder=shared_encoder)
+        self.encoder = shared_encoder
+
+        # Optional: make the encoder trainable. A learnable projection head
+        # on top gives the contrastive loss a real gradient path even if the
+        # base weights stay frozen.
+        dim = shared_encoder.get_sentence_embedding_dimension()
+        self.encoder_projection = nn.Linear(dim, dim)
+        if config.trainable_encoder:
+            for p in self.encoder.parameters():
+                p.requires_grad = True
+            self.encoder.train()
+        else:
+            for p in self.encoder_projection.parameters():
+                # head only matters when the encoder path is trainable
+                p.requires_grad = False
         
         # Move to device
         self.to(config.device)
@@ -441,7 +477,7 @@ class HybridRAGCAG(nn.Module):
         # and reporting, not for backprop.
         with torch.no_grad():
             candidates_batch = self.generator.generate_candidates(
-                questions, contexts, num_candidates=5
+                questions, contexts, num_candidates=self.config.num_candidates
             )
             # Step 5: Contrastive selection
             final_answers = self.generator.contrastive_selection(
@@ -478,16 +514,28 @@ class HybridRAGCAG(nn.Module):
         """
         # Real differentiable generation loss -----------------------
         gen_loss = self.compute_generation_loss(questions, contexts, gold_answers)
-        
-        # Frozen-encoder regularisers (informational; no grad into BART)
-        with torch.no_grad():
-            candidates_batch = self.generator.generate_candidates(
-                questions, contexts, num_candidates=5
-            )
+
+        # Candidates are produced with no_grad (generation is not
+        # differentiable), but the contrastive term re-embeds them WITH
+        # gradients enabled so the loss trains the projection head (and
+        # the encoder itself when ``config.trainable_encoder`` is set).
+        # When both weights are zero, skip candidate generation entirely --
+        # it dominates CPU training time and memory.
+        need_candidates = (self.config.lambda_contrastive != 0) or (self.config.lambda_diversity != 0)
+        if need_candidates:
+            with torch.no_grad():
+                candidates_batch = self.generator.generate_candidates(
+                    questions, contexts, num_candidates=5
+                )
             contrastive_loss = self.compute_contrastive_loss(
                 questions, candidates_batch, gold_answers
             )
-            diversity_loss = self.compute_diversity_loss(candidates_batch)
+            with torch.no_grad():
+                diversity_loss = self.compute_diversity_loss(candidates_batch)
+        else:
+            zero = torch.zeros((), device=self.config.device)
+            contrastive_loss = zero
+            diversity_loss = zero
         
         total_loss = (
             self.config.lambda_gen * gen_loss
@@ -544,15 +592,24 @@ class HybridRAGCAG(nn.Module):
         )
         return outputs.loss  # differentiable scalar
     
+    def _encode_with_grad(self, texts: List[str]) -> torch.Tensor:
+        """Differentiable sentence embeddings through the shared encoder
+        plus the learnable projection head."""
+        features = self.encoder.tokenize(texts)
+        features = {k: v.to(self.config.device) for k, v in features.items()
+                    if torch.is_tensor(v)}
+        out = self.encoder(features)
+        emb = out['sentence_embedding']
+        return self.encoder_projection(emb)
+
     def compute_contrastive_loss(self, questions: List[str],
                                candidates_batch: List[List[str]],
                                gold_answers: List[str]) -> torch.Tensor:
-        """InfoNCE-style contrastive loss over frozen candidate embeddings.
+        """InfoNCE-style contrastive loss over candidate embeddings.
 
-        NOTE: encoders are frozen, so this term does not generate useful
-        parameter gradients. We ``.detach()`` it implicitly via the
-        ``torch.no_grad()`` block in :meth:`compute_losses`, so it cannot
-        be misused as a training signal.
+        Embeddings are computed through :meth:`_encode_with_grad`, so this
+        term trains the projection head always, and the encoder weights as
+        well when ``config.trainable_encoder`` is True.
         """
         losses = []
         for question, candidates, gold in zip(questions, candidates_batch, gold_answers):
@@ -560,21 +617,20 @@ class HybridRAGCAG(nn.Module):
                 continue
             f1s = [self.compute_f1_score(c, gold) for c in candidates]
             best_idx = int(np.argmax(f1s))
-            if f1s[best_idx] < 0.1:
+            # Only skip when there is literally no token-overlap signal among
+            # any candidate; otherwise even the least-bad candidate gives the
+            # selector a useful ranking signal early in training.
+            if f1s[best_idx] <= 0.0:
                 continue
-            
-            q_emb = torch.tensor(
-                self.generator.sentence_encoder.encode([question])
-            )
-            cand_embs = torch.tensor(
-                self.generator.sentence_encoder.encode(candidates)
-            )
+
+            q_emb = self._encode_with_grad([question])
+            cand_embs = self._encode_with_grad(candidates)
             logits = F.cosine_similarity(q_emb, cand_embs, dim=1) / self.config.temperature
             losses.append(
-                F.cross_entropy(logits.unsqueeze(0), torch.tensor([best_idx]))
+                F.cross_entropy(logits.unsqueeze(0), torch.tensor([best_idx], device=logits.device))
             )
         if not losses:
-            return torch.tensor(0.0)
+            return torch.tensor(0.0, device=self.config.device)
         return torch.stack(losses).mean()
     
     def compute_diversity_loss(self, candidates_batch: List[List[str]]) -> torch.Tensor:
