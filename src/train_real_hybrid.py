@@ -220,10 +220,19 @@ def main() -> None:
                 opt.zero_grad()
                 losses["total_loss"].backward()
                 opt.step()
+                tl, gl, cl = (losses["total_loss"].item(),
+                              losses["generation_loss"].item(),
+                              losses["contrastive_loss"].item())
+                del losses
+                import gc, ctypes
+                gc.collect()
+                try:
+                    ctypes.CDLL("libc.so.6").malloc_trim(0)
+                except Exception:
+                    pass
                 step += 1
-                print(f"[train] step {step}/{total_steps}  total={losses['total_loss'].item():.4f} "
-                      f"gen={losses['generation_loss'].item():.4f} "
-                      f"contrast={losses['contrastive_loss'].item():.4f}", flush=True)
+                print(f"[train] step {step}/{total_steps}  total={tl:.4f} "
+                      f"gen={gl:.4f} contrast={cl:.4f}", flush=True)
                 if step % 5 == 0:
                     save_ckpt()
                 # checkpoint the log so a crash doesn't lose progress
