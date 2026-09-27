@@ -318,11 +318,26 @@ class HybridGenerator(nn.Module):
                 do_sample=False,
             )
             if getattr(self.config, 'num_beam_groups', 1) > 1:
-                gen_kwargs.update(
-                    num_beam_groups=self.config.num_beam_groups,
-                    diversity_penalty=self.config.diversity_penalty,
+                # transformers>=4.56 moved group beam search behind
+                # trust_remote_code; use diverse sampling instead, which
+                # gives the same effect offline.
+                n_beam = max(1, num_candidates // 2)
+                gen_kwargs.update(num_beams=n_beam,
+                                  num_return_sequences=n_beam)
+                beam_outputs = list(self.model.generate(**inputs, **gen_kwargs))
+                extra = self.model.generate(
+                    **inputs,
+                    max_length=self.config.max_target_length,
+                    do_sample=True,
+                    top_p=0.92,
+                    temperature=0.9,
+                    top_k=50,
+                    num_return_sequences=num_candidates - n_beam,
+                    early_stopping=True,
                 )
-            beam_outputs = self.model.generate(**inputs, **gen_kwargs)
+                beam_outputs.extend(extra)
+            else:
+                beam_outputs = self.model.generate(**inputs, **gen_kwargs)
             
             for output in beam_outputs:
                 candidate = self.tokenizer.decode(output, skip_special_tokens=True)
