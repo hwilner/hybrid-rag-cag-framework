@@ -9,7 +9,9 @@ This implementation fixes the issues in the original code by providing:
 4. Comprehensive evaluation framework
 """
 
+import warnings
 import json
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -431,16 +433,40 @@ class HybridRAGCAG(nn.Module):
         }
     
     def compute_generation_loss(self, predictions: List[str], targets: List[str]) -> torch.Tensor:
-        """Compute generation loss using token-level F1"""
-        f1_scores = []
-        
-        for pred, target in zip(predictions, targets):
-            f1 = self.compute_f1_score(pred, target)
-            f1_scores.append(f1)
-        
-        # Convert to loss (1 - F1)
-        avg_f1 = np.mean(f1_scores)
-        return torch.tensor(1.0 - avg_f1, requires_grad=True)
+        """RETURNS A CONSTANT -- NOT A LOSS. Do not call this for training.
+
+        Historical behaviour, preserved for backwards compatibility. The original
+        implementation was::
+
+            return torch.tensor(1.0 - np.mean(f1_scores), requires_grad=True)
+
+        which is a numpy constant with a decorative grad flag: it has no
+        ``grad_fn`` and no computational graph.
+
+        Note the failure mode precisely: ``backward()`` on it does **not** raise.
+        It is a leaf tensor, so autograd treats it as a valid scalar and returns
+        without attaching any gradient to any parameter. ``param.grad`` stays
+        ``None`` and the optimizer step is a no-op. Training would appear to run
+        for the configured 5 epochs while every weight remained at
+        initialisation. That silent no-op is worse than a crash: nothing in the
+        code path signals that training was a no-op.
+
+        For a real, differentiable loss use
+        :meth:`src.trainable_losses.DifferentiableLoss.generation_loss`, which
+        returns BART's teacher-forced cross-entropy. The value below is kept only
+        so existing callers do not crash, and now raises if anyone tries to
+        backpropagate through it.
+
+        See ``results.md`` and ``REVIEW.md`` for the full account.
+        """
+        warnings.warn(
+            "compute_generation_loss returns a detached constant and is not "
+            "trainable. Use trainable_losses.DifferentiableLoss instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        f1_scores = [self.compute_f1_score(p, t) for p, t in zip(predictions, targets)]
+        return torch.tensor(1.0 - float(np.mean(f1_scores)))
     
     def compute_contrastive_loss(self, questions: List[str], candidates_batch: List[List[str]], 
                                gold_answers: List[str]) -> torch.Tensor:

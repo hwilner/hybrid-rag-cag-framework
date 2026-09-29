@@ -103,6 +103,105 @@ The field is literally named `p_value_estimate` — a string, never a number.
 `docs/METHODS.md` pre-registered Wilcoxon signed-rank plus a bootstrap CI. The shipped code does
 neither. This run implements that pre-registration (§3).
 
+### 1.4 The training loss could not train — silently
+
+`HybridRAGCAG.compute_generation_loss` returned:
+
+```python
+avg_f1 = np.mean(f1_scores)
+return torch.tensor(1.0 - avg_f1, requires_grad=True)
+```
+
+`avg_f1` is a `numpy` float over decoded strings. The result is a **constant wearing a grad
+flag**: no `grad_fn`, no computational graph.
+
+The precise failure mode is worth stating, because it is not the obvious one. `backward()` on
+this tensor **does not raise**. Being a leaf, it is a perfectly valid scalar to autograd, so
+`backward()` returns normally, `param.grad` stays `None`, and the optimizer step does nothing.
+Verified directly:
+
+```
+param grad after backward(): None
+param changed: False
+```
+
+Training would appear to run for the configured 5 epochs while every weight stayed at
+initialisation. No exception, no NaN, no warning — which is how the defect survived in the
+repository. This is worse than a crash: a crash at least tells you something is wrong.
+
+The contrastive and diversity terms have the same defect in subtler form. They wrap
+`SentenceTransformer.encode()` output in `torch.tensor(...)`, which detaches it, and the
+sentence-transformer encoders are frozen anyway — so even wired correctly, those terms could
+not reach the generator.
+
+**Fixed.** `src/trainable_losses.py` provides a real loss:
+
+- `generation_loss()` — BART's own teacher-forced cross-entropy via
+  `forward(input_ids, attention_mask, labels)`. Differentiable w.r.t. all generator weights.
+- `contrastive_loss()` — InfoNCE over candidate log-probabilities scored by the *generator*
+  rather than a frozen sentence encoder, so gradients actually flow.
+- `sequence_f1()` — retained as a **metric**, explicitly not as a loss.
+
+Measured on a tiny randomly-initialised BART (no checkpoint download):
+
+| | Old loss | New loss |
+|---|---|---|
+| `requires_grad` | True | True |
+| `grad_fn` | **None** | `NllLossBackward0` |
+| Parameters receiving gradient | 0 | 91 |
+| Total gradient magnitude | — | 76.17 |
+
+`tests/test_loss_differentiable.py` (7 tests) asserts this, so the defect cannot silently
+return. `HybridRAGCAG.compute_generation_loss` is retained for backwards compatibility but now
+raises `DeprecationWarning` and returns a detached constant that is *not* fake-flagged.
+
+### 1.5 Fake evaluations can no longer silently regenerate fake results
+
+Both retracted scripts wrote fabricated numbers to disk, and the original output paths pointed
+at `/mnt/user-data/outputs/`, a path that does not exist here. Anyone running them would
+regenerate the retracted data under a new name.
+
+Both now refuse to run without an explicit opt-in flag, and when forced, write only to
+`results/UNSAFE_*.json` — never `results/*.json`:
+
+```bash
+$ python src/expert_evaluation.py
+REFUSING TO RUN: the 'human expert' responses in this script are
+hardcoded strings in this file. No human study took place.
+For real numbers:  python src/run_honest_evaluation.py
+```
+
+| Script | Opt-in flag | Forced output path |
+|---|---|---|
+| `option3_full_scale_evaluation.py` | `--i-know-this-is-fake` | `results/UNSAFE_option3_fabricated_results.json` |
+| `expert_evaluation.py` | `--i-know-these-arent-human` | `results/UNSAFE_expert_simulated_results.json` |
+
+The originals are kept intact so the defect stays auditable rather than being deleted.
+
+### 1.6 The README's usage example could not run
+
+The documented example imported `HybridRAGCAGSystem` and called `.index_corpus()` and
+`.answer_question()`. **None of those exist** — `grep -c "class HybridRAGCAGSystem"` returns 0 —
+so the first line of the primary example raised `ImportError`. The README now documents the real
+API (`HybridRAGCAG` + `HybridConfig`, `retriever.build_index()`, `model(questions=...)`).
+
+The documented `--evaluation_tier` flag was also phantom: `train_and_evaluate.py` accepted only
+`--mode`, `--train_data`, `--dev_data`, `--output_dir`, `--max_train_samples`, and
+`--max_eval_samples`, so the documented command failed with "unrecognized arguments". The flag
+now exists and warns that Tier 1 has no reproducible implementation.
+
+### 1.7 Mechanism claims with no corresponding code
+
+| README claim | Reality |
+|---|---|
+| "Bi-encoder with contrastive learning" | frozen `all-mpnet-base-v2`; retriever is not trained |
+| "FAISS similarity search" | ✅ true (`IndexFlatIP`) |
+| "SVD dimension reduction" | not present |
+| "Learned reranking weights" | frozen encoder + cosine similarity |
+| "Multi-candidate generation + confidence estimation" | generation ✅; confidence estimation absent |
+| "Dynamic fusion H(q) = α(q)·R + (1−α(q))·G" | fixed 0.6/0.4 cosine; α is a constant, not a function of q |
+| "Joint loss" | see §1.4 |
+
 ---
 
 ## 2. What was re-measured
@@ -235,3 +334,37 @@ python src/run_honest_evaluation.py --output results/verified_tier2.json
 
 Deterministic — no sampling, no seeds needed. Runs in under a second on CPU. Any discrepancy
 from the numbers in §2 is a bug worth reporting.
+
+Requires only `numpy`, `scikit-learn`, and `scipy` (plus `torch` for the loss tests).
+
+```bash
+pytest tests/ -q     # 7 passed, 1 skipped
+```
+
+## 7. Implementation changes made in this branch
+
+The retraction above is only useful if the defects stop recurring, so the code was changed too.
+
+| Change | File | Addresses |
+|---|---|---|
+| Real differentiable loss; F1 demoted to a metric | `src/trainable_losses.py` (new) | §1.4 |
+| Legacy loss deprecated, no longer fake-flagged | `src/hybrid_rag_cag_system.py` | §1.4 |
+| Fabricated eval refuses to run; output forced to `UNSAFE_*` | `src/option3_full_scale_evaluation.py` | §1.5 |
+| Simulated "human expert" eval refuses to run; output forced to `UNSAFE_*` | `src/expert_evaluation.py` | §1.5 |
+| `--evaluation_tier` flag now exists and warns | `src/train_and_evaluate.py` | §1.6 |
+| Usage example now matches the real API | `README.md` | §1.6 |
+| Regression tests for the loss | `tests/test_loss_differentiable.py` (new) | §1.4 |
+| Real baselines replacing the dictionaries | `src/honest_baselines.py` (new) | §1.1, §2 |
+
+### Still not fixed
+
+- **The retriever is still frozen.** No contrastive retriever training exists. Doing it properly
+  needs a trainable bi-encoder with in-batch negatives (DPR-style), which is a research task,
+  not a patch. Until then, "bi-encoder with contrastive learning" remains an unsupported claim.
+- **No training run was performed.** The loss is verified differentiable; the model was not
+  trained and no post-training metric is reported. Training BART-large needs ≳16 GB RAM.
+- **The 55-question dataset is still unfit for comparison.** 34/55 gold answers are absent from
+  the corpus (§2.1). Fixing that requires a new dataset, not better code.
+- **`improve/real-model` was not built on.** That branch deletes `docs/METHODS.md`, the most
+  honest document in the repository. It also duplicates work done here. It should be reconciled
+  manually rather than merged.

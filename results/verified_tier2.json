@@ -189,7 +189,7 @@
         0.0
       ],
       "n": 55,
-      "wallclock_sec": 0.12,
+      "wallclock_sec": 0.2,
       "predictions": [
         {
           "question": "What is the capital of France?",

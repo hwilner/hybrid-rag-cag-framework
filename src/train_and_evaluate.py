@@ -470,6 +470,14 @@ def main():
                        help='Maximum number of training samples')
     parser.add_argument('--max_eval_samples', type=int, default=500,
                        help='Maximum number of evaluation samples')
+    parser.add_argument('--evaluation_tier', type=int, choices=[1], default=None,
+                       help=('Accepted for backwards compatibility. Tier 1 was '
+                             'previously documented in the README but this flag '
+                             'did not exist, so the documented command failed with '
+                             '"unrecognized arguments". Tier 1 has no reproducible '
+                             'implementation -- its reported F1 0.389 / RAG 0.247 '
+                             'are retracted (see results.md). For the real '
+                             'evaluation run: python src/run_honest_evaluation.py'))
     
     args = parser.parse_args()
     

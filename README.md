@@ -24,8 +24,15 @@ Retracted claims:
   `src/expert_evaluation.py`. No human study took place.
 - ~~"Statistical significance across all evaluation tiers"~~ — Tier-2 significance labels were
   assigned by comparing a t-statistic to hardcoded constants; no p-value was ever computed.
+- ~~"Joint loss"~~ — the training loss returned a detached constant, so `backward()` silently
+  updated nothing. Training ran for the configured epochs with every weight unchanged. Now
+  replaced with real BART cross-entropy (`src/trainable_losses.py`), covered by tests.
 - ~~"State-of-the-art comparison with FiD, T5-FiD, and DPR+FiD"~~ — those baselines did not exist
   as models.
+
+The two retracted evaluation scripts (`option3_full_scale_evaluation.py`,
+`expert_evaluation.py`) now **refuse to run** without an explicit opt-in flag, and when forced
+write only to `results/UNSAFE_*.json` — so the fabricated numbers cannot be silently regenerated.
 
 **No claim of superiority over any baseline is currently supported by this repository.** The
 architecture described in [`docs/METHODS.md`](docs/METHODS.md) is real and is instantiated in
@@ -80,28 +87,59 @@ pip install -r requirements.txt
 
 ### Basic Usage
 
+The class names and methods below are the ones that actually exist. An earlier
+version of this README documented `HybridRAGCAGSystem`, `.index_corpus()`, and
+`.answer_question()` — **none of which exist**, so that example raised
+`ImportError` on the first line. The real API is:
+
 ```python
-from hybrid_rag_cag_system import HybridRAGCAGSystem
+from hybrid_rag_cag_system import HybridRAGCAG, HybridConfig
 
-# Initialize the system
-system = HybridRAGCAGSystem(
-    model_name="sentence-transformers/all-mpnet-base-v2",
-    embedding_dim=768
-)
+config = HybridConfig()                 # retriever_model, generator_model, top_k, ...
+model = HybridRAGCAG(config)
 
-# Index your corpus
+# Index the corpus
 corpus = [
     "Paris is the capital of France.",
     "Machine learning is a subset of AI.",
     # ... your documents
 ]
-system.index_corpus(corpus)
+model.retriever.build_index(corpus)
 
-# Ask questions
-question = "What is the capital of France?"
-answer = system.answer_question(question)
-print(f"Answer: {answer}")
+# Ask a question. forward() returns a dict; the answer is under 'final_answers'.
+result = model(questions=["What is the capital of France?"])
+print(result["final_answers"])
 ```
+
+Public surface, as implemented:
+
+| Class | Method | Purpose |
+|---|---|---|
+| `HybridConfig` | — | configuration dataclass |
+| `DenseRetriever` | `build_index(corpus)` | build the FAISS `IndexFlatIP` index |
+| `DenseRetriever` | `retrieve(queries, k=10)` | dense retrieval |
+| `ContrastiveReranker` | `rerank(queries, docs, k=5)` | rerank the top-k |
+| `HybridGenerator` | `generate_candidates(...)` | multi-candidate decoding |
+| `HybridGenerator` | `forward(input_ids, attention_mask, labels)` | real BART forward |
+| `HybridRAGCAG` | `__call__(questions, gold_answers=None)` | full pipeline |
+
+### Training (differentiable)
+
+The shipped `HybridRAGCAG.compute_generation_loss` returned a detached constant
+(see `results.md` §1.4) and is now deprecated. For real training use
+`src/trainable_losses.py`, which returns BART's own teacher-forced
+cross-entropy:
+
+```python
+from trainable_losses import DifferentiableLoss
+
+loss_fn = DifferentiableLoss(model.generator.model, model.generator.tokenizer)
+loss = loss_fn.generation_loss(["What is the capital of France?"], ["Paris"])
+loss.backward()          # populates .grad on 91/91 generator parameters
+```
+
+`tests/test_loss_differentiable.py` asserts this, so the defect cannot silently
+return.
 
 ### Running Evaluations
 

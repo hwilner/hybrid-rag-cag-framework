@@ -443,8 +443,45 @@ def error_analysis(systems: Dict[str, Any], questions: List[Dict],
     return error_analysis_results
 
 def main():
-    """Run expert-level scientific evaluation with human-response comparison."""
-    
+    """Run expert-level scientific evaluation with human-response comparison.
+
+    .. warning::
+
+       **DISABLED BY DEFAULT. There are no human experts in this evaluation.**
+
+       ``create_real_world_scientific_dataset`` returns expert responses that are
+       **hardcoded strings** defined in this file, prefixed with a comment
+       reading "Simulated human expert responses (PhD-level domain experts)" and
+       carrying synthetic ids such as ``'expert_id': 'quantum_expert_1'``.
+
+       No human was involved. The p-values this script reports (e.g. 2.1e-15) are
+       real scipy output, but they measure AI output against hardcoded text -- not
+       against a human expert. Reporting them as "38.1% of human expert
+       performance" is not supportable.
+
+       Those outputs are the retracted numbers in ``results/RETRACTED/``. For a
+       real evaluation use ``src/run_honest_evaluation.py``.
+
+    The original entry point is kept so the defect stays auditable. To run it
+    anyway, pass ``--i-know-these-arent-human``; output is forced to
+    ``results/UNSAFE_*`` so it cannot overwrite a real result file.
+    """
+    import sys as _sys
+
+    if "--i-know-these-arent-human" not in _sys.argv:
+        print("=" * 60)
+        print("REFUSING TO RUN: the 'human expert' responses in this script are")
+        print("hardcoded strings in this file. No human study took place.")
+        print("")
+        print("For real numbers:  python src/run_honest_evaluation.py")
+        print("To run this anyway: --i-know-these-arent-human")
+        print("See results.md for the full retraction record.")
+        print("=" * 60)
+        raise SystemExit(2)
+
+    print("🚨 WARNING: running the SIMULATED evaluation. The 'experts' are")
+    print("   hardcoded strings. This is not a human study.")
+    print("=" * 60)
     print("🔬 EXPERT-LEVEL SCIENTIFIC EVALUATION")
     print("=" * 60)
     print("Human-response comparison and exploratory error analysis")
@@ -588,9 +625,13 @@ def main():
     print("✅ Statistical comparison outputs")
     print("⚠️ Results are exploratory and require independent replication")
     
-    # Save comprehensive results
-    os.makedirs("/mnt/user-data/outputs", exist_ok=True)
-    output_file = "/mnt/user-data/outputs/expert_evaluation_results.json"
+    # Save comprehensive results. Forced under results/UNSAFE_* so simulated
+    # output can never overwrite a real result file, and to a local path rather
+    # than the hardcoded /mnt/user-data/outputs which does not exist here.
+    _here = os.path.dirname(os.path.abspath(__file__))
+    _outdir = os.path.join(os.path.dirname(_here), "results")
+    os.makedirs(_outdir, exist_ok=True)
+    output_file = os.path.join(_outdir, "UNSAFE_expert_simulated_results.json")
     
     with open(output_file, 'w') as f:
         # Prepare serializable results

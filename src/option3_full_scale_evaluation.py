@@ -952,8 +952,48 @@ def ultimate_statistical_analysis(results: Dict[str, Dict[str, float]]) -> Dict[
     return analysis
 
 def main():
-    """Run the Option 3 full-scale comparative evaluation."""
-    
+    """Run the Option 3 full-scale comparative evaluation.
+
+    .. warning::
+
+       **DISABLED BY DEFAULT. This script produces numbers that are not
+       measurements.**
+
+       Every "system" below (``RAG``, ``CAG``, ``FiD``, ``T5-FiD``, ``DPR+FiD``,
+       ``Advanced RAG``, ``Hybrid``) is an ``if``-chain over a hardcoded
+       dictionary, not a model. ``_t5_generate`` begins with the comment
+       ``# Simulate T5's generation approach`` and returns ``'Paris'`` for
+       ``'capital of france' in q_lower``. No FiD, T5-FiD, or DPR checkpoint is
+       loaded anywhere in this file.
+
+       The ranking this script produces therefore measures dictionary coverage.
+       Its recorded response time for CAG (8.9e-06 s) is physically impossible
+       for a neural generator, which is the clearest evidence that no model
+       inference ever ran here.
+
+       Those outputs are the retracted numbers in ``results/RETRACTED/``. For a
+       real, reproducible evaluation use ``src/run_honest_evaluation.py``.
+
+    The original entry point is kept so the defect stays auditable. To run it
+    anyway, pass ``--i-know-this-is-fake``; the output path is forced to
+    ``results/UNSAFE_*`` so it can never overwrite a real result file.
+    """
+    import sys as _sys
+
+    if "--i-know-this-is-fake" not in _sys.argv:
+        print("=" * 70)
+        print("REFUSING TO RUN: this script's 'baselines' are dictionary lookups,")
+        print("not models. Its output is the retracted data in results/RETRACTED/.")
+        print("")
+        print("For real numbers:  python src/run_honest_evaluation.py")
+        print("To run this anyway: --i-know-this-is-fake   (output forced to")
+        print("                     results/UNSAFE_*.json, never results/*.json)")
+        print("See results.md for the full retraction record.")
+        print("=" * 70)
+        raise SystemExit(2)
+
+    print("🚨 WARNING: running the FABRICATED evaluation. Output is not a measurement.")
+    print("=" * 70)
     print("🚀 OPTION 3: ULTIMATE FULL-SCALE EVALUATION")
     print("=" * 70)
     print("Large-scale baseline comparison and exploratory analysis")
@@ -1058,9 +1098,13 @@ def main():
     print("✅ Explicit comparison and error-analysis outputs")
     print("⚠️ Metrics are exploratory and do not establish external validity")
     
-    # Save ultimate results
-    os.makedirs("/mnt/user-data/outputs", exist_ok=True)
-    output_file = "/mnt/user-data/outputs/option3_ultimate_evaluation_results.json"
+    # Save ultimate results. Forced under results/UNSAFE_* so this fabricated
+    # output can never overwrite a real result file, and to a local path rather
+    # than the hardcoded /mnt/user-data/outputs which does not exist here.
+    _here = os.path.dirname(os.path.abspath(__file__))
+    _outdir = os.path.join(os.path.dirname(_here), "results")
+    os.makedirs(_outdir, exist_ok=True)
+    output_file = os.path.join(_outdir, "UNSAFE_option3_fabricated_results.json")
     
     with open(output_file, 'w') as f:
         # Prepare serializable results
