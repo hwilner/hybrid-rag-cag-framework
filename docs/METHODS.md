@@ -1,5 +1,10 @@
 # Methods: Done, Intended, and Undecided
 
+> **⚠️ Retracted (2026-09-29).** The Tier-1 figures previously stated here (+57.5% F1,
+> Hybrid 0.389 vs RAG 0.247) are **unsupported**: no code in this repository produces
+> them, and the evaluation baselines were hardcoded dictionary lookups rather than models.
+> See [`results.md`](../results.md) for the evidence and the reproducible replacement numbers.
+
 This document records, in the style of a lab methods log, **what is actually
 implemented and evaluated** in this repository, **what is planned** (with the
 published paradigm each module builds on and the failure mode it targets),
@@ -72,9 +77,10 @@ with default weights 1.0 / 0.5 / 0.1.
 
 | Tier | Script | Dataset | Hybrid F1 | Reference | Reading |
 |------|--------|---------|-----------|-----------|---------|
-| 1 | `src/train_and_evaluate.py` | 12 Qs | **0.389** | RAG alone 0.247 | +57.5% over the RAG ablation |
-| 2 | `src/option3_full_scale_evaluation.py` | 55 Qs, 6 systems | **0.276** | Advanced RAG 0.369 | competitive, not best |
-| 3 | `src/expert_evaluation.py` | 26 PhD-level science Qs | **0.140** | expert ref 0.368 | 38.1% of expert; 0% success on hard physics |
+| 1 | `src/train_and_evaluate.py` | 12 Qs | **not run** | — | withdrawn, see [`results.md`](../results.md) |
+| 2 | `src/option3_full_scale_evaluation.py` | 55 Qs, 6 systems | **retracted** | real TF-IDF/BM25 baselines: **0.177** | 0.276 came from dictionary baselines and exceeds the 0.187 oracle ceiling |
+| 3 | `src/expert_evaluation.py` | 26 PhD-level science Qs | **withdrawn** | — | "expert" responses are hardcoded strings; no human study |
+| 2 (re-measured) | `src/run_honest_evaluation.py` | 55 Qs | **0.177** | oracle ceiling 0.187 | real TF-IDF and BM25; 34/55 answers absent from corpus |
 
 **Honest limitations** (from `docs/TECHNICAL_EVALUATION_NOTES.md`): datasets
 are small and not public benchmarks; Tier-3 expert responses are simulated,

@@ -1,5 +1,10 @@
 # Introduction: Why Hybrid RAG-CAG?
 
+> **⚠️ Retracted (2026-09-29).** The Tier-1 figures previously stated here (+57.5% F1,
+> Hybrid 0.389 vs RAG 0.247) are **unsupported**: no code in this repository produces
+> them, and the evaluation baselines were hardcoded dictionary lookups rather than models.
+> See [`results.md`](../results.md) for the evidence and the reproducible replacement numbers.
+
 This document explains, from the ground up, the problem this repository
 addresses and how the Hybrid RAG-CAG system in `src/hybrid_rag_cag_system.py`
 approaches it. It assumes a technical reader who is new to the project but not
@@ -109,9 +114,9 @@ The repo evaluates the system in three progressively harder tiers (datasets in
 
 | Tier | Dataset | Hybrid F1 | Reference |
 |------|---------|-----------|-----------|
-| 1 — Foundational | 12 questions | **0.389** | +57.5% over standalone RAG (0.247) |
-| 2 — Enhanced | 55 questions, 6 systems | **0.276** | below Advanced RAG (0.369) |
-| 3 — Expert-level | 26 PhD-level scientific questions | **0.140** | 38.1% of expert reference (0.368) |
+| 1 — Foundational | 12 questions | **not run** | withdrawn — see [`results.md`](../results.md) |
+| 2 — Enhanced | 55 questions, 6 systems | **retracted** | 0.276 was produced by dictionary baselines; real baselines score 0.177 against a 0.187 ceiling |
+| 3 — Expert-level | 26 PhD-level scientific questions | **retracted** | "expert" responses were hardcoded strings; no human study took place |
 
 The honest reading: the hybrid beats its own RAG ablation clearly on the small
 foundational set, is *competitive but not dominant* against stronger baselines

@@ -1,5 +1,10 @@
 # Extended Introduction: RAG and Hybrid RAG-CAG, Explained From Zero
 
+> **⚠️ Retracted (2026-09-29).** The Tier-1 figures previously stated here (+57.5% F1,
+> Hybrid 0.389 vs RAG 0.247) are **unsupported**: no code in this repository produces
+> them, and the evaluation baselines were hardcoded dictionary lookups rather than models.
+> See [`results.md`](../results.md) for the evidence and the reproducible replacement numbers.
+
 This guide assumes **no background in machine learning, math beyond
 arithmetic, or NLP**. Every technical idea is introduced the same way:
 first a tiny example with real numbers you can check by hand, then the
@@ -156,15 +161,16 @@ precision) or an incomplete one (low recall) both drag F1 down.
 The system was tested on three tiers of increasing difficulty (details in
 [TECHNICAL_EVALUATION_NOTES.md](TECHNICAL_EVALUATION_NOTES.md)):
 
-- **Tier 1 (12 basic questions):** F1 **0.389** — a **57.5% improvement**
-  over the same system with the extra layers switched off (plain RAG, 0.247).
+- **Tier 1 (12 basic questions):** **not run / withdrawn.** The previously reported
+  F1 0.389 (+57.5% over plain RAG at 0.247) is retracted as unsupported.
   The layered design clearly helps.
-- **Tier 2 (55 questions, compared with 5 other published-style systems):**
-  F1 **0.276** — competitive, but *not* the best; a stronger "Advanced RAG"
-  baseline scored 0.369.
-- **Tier 3 (26 PhD-level science questions):** F1 **0.140**, which is only
-  **38.1% of the expert reference** (0.368). On hard physics questions the
-  system essentially failed.
+- **Tier 2 (55 questions):** the reported F1 **0.276** is **retracted**. The five
+  "published-style systems" it was compared against were dictionary lookups.
+  Re-measured with real TF-IDF and BM25 baselines: F1 **0.177** against an
+  oracle ceiling of **0.187** (34/55 gold answers are absent from the corpus).
+- **Tier 3 (26 PhD-level science questions):** **withdrawn.** The reported F1 0.140
+  and "38.1% of expert" both derive from hardcoded expert-response strings; no
+  human expert was involved.
 
 **Caveats that matter:** the datasets are small; the Tier-3 "expert" answers
 are simulated inside the evaluation code, not collected from real humans; and
