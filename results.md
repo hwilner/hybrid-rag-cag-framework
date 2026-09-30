@@ -4,14 +4,13 @@
 retracted as unsupported.** This file records what was found, what was re-measured, and what
 could not be measured. Negative results are reported in full and are not omitted.
 
-Everything below was produced by code in this repository and can be reproduced with:
+Two independent sets of measurements are recorded here:
 
-```bash
-pip install -r requirements.txt          # numpy, scikit-learn, scipy (no torch needed)
-python src/run_honest_evaluation.py      # → results/verified_tier2.json
-```
+1. **Lexical baselines** on the Tier-2 dataset (cheap, CPU-only, no GPU) — §1–§5.
+2. **Real Hybrid vs RAG vs CAG ablation** across all four branches, running the actual
+   BART-large + `all-mpnet-base-v2` pipeline — §6.
 
-Verified on 2026-09-29. No GPU, no network calls, no paid API.
+Everything is reproducible from code in this repository.
 
 ---
 
@@ -60,48 +59,26 @@ measured dictionary coverage, not retrieval quality.
 
 ### 1.2 Corroborating evidence
 
-Three independent checks, any one of which is sufficient:
-
-1. **Physically impossible timing.** `results/option3_ultimate_evaluation_results.json` records
-   an average response time of `8.94e-06` seconds for CAG. BART-large cannot produce a token in
-   under a millisecond on any hardware. The 9-microsecond budget is only consistent with a
-   dictionary lookup. (The same file records RAG at 3.9e-03 s — also too fast for a neural
-   generator, and the two differ by a factor of ~440 for systems that would share a backend.)
-
-2. **The Tier-1 numbers are not produced by any code.** Grepping all of `src/` for the two values
-   the headline claim is computed from:
-   ```
-   grep -rn "0.247\|0.389" src/     →  no matches
-   ```
-   The README's central claim is not the output of any executable code in this repository.
-
-3. **The repository contradicts itself.** Two checked-in result files disagree, and neither is
-   read by any code:
-
-   | File | RAG F1 | Hybrid F1 | Implied improvement |
-   |---|---|---|---|
-   | `results/validated_experimental_results.json` | 0.247 | 0.389 | +57.5% |
-   | `results/updated_results.json` | 0.215 | 0.381 | +77.2% |
-
-   The README quoted the more favourable of the two.
+1. **Physically impossible timing.** `results/RETRACTED/option3_ultimate_evaluation_results.json`
+   records an average response time of `8.94e-06` seconds for CAG. BART-large cannot produce a
+   token in under a millisecond on any hardware.
+2. **The Tier-1 numbers are not produced by any code.** Grepping all of `src/` for the two
+   values the headline claim is computed from returns no matches.
+3. **The repository contradicts itself.** `results/RETRACTED/validated_experimental_results.json`
+   says RAG=0.247, Hybrid=0.389 (+57.5%); `results/RETRACTED/updated_results.json` says
+   RAG=0.215, Hybrid=0.381 (+77.2%). Neither is read by any code.
 
 ### 1.3 "Statistical significance" was never computed
-
-`option3_full_scale_evaluation.py` derives its significance labels by comparing a t-statistic to
-hardcoded constants:
 
 ```python
 if abs(t_statistic) > 2.58:  significance = "Highly Significant (p<0.01)"
 elif abs(t_statistic) > 1.96: significance = "Significant (p<0.05)"
 ```
 
-These thresholds are two-sided normal approximations and are only valid for large *n*; at n=55
-the correct critical value for p<0.05 is t≈2.01, not 1.96. No p-value is computed, no normality
-check is performed, and no multiple-comparison correction is applied across the five baselines.
-The field is literally named `p_value_estimate` — a string, never a number.
-
-`docs/METHODS.md` pre-registered Wilcoxon signed-rank plus a bootstrap CI. The shipped code does
-neither. This run implements that pre-registration (§3).
+Those are two-sided normal approximations, valid only for large *n*; at n=55 the correct
+critical value for p<0.05 is t≈2.01. No p-value is computed, no normality check is performed,
+and no multiple-comparison correction is applied. The field is named `p_value_estimate` — a
+string, never a number.
 
 ### 1.4 The training loss could not train — silently
 
@@ -112,120 +89,63 @@ avg_f1 = np.mean(f1_scores)
 return torch.tensor(1.0 - avg_f1, requires_grad=True)
 ```
 
-`avg_f1` is a `numpy` float over decoded strings. The result is a **constant wearing a grad
-flag**: no `grad_fn`, no computational graph.
-
-The precise failure mode is worth stating, because it is not the obvious one. `backward()` on
-this tensor **does not raise**. Being a leaf, it is a perfectly valid scalar to autograd, so
-`backward()` returns normally, `param.grad` stays `None`, and the optimizer step does nothing.
-Verified directly:
+`avg_f1` is a `numpy` float over decoded strings — a **constant wearing a grad flag**. The
+precise failure mode is not the obvious one: `backward()` on this tensor **does not raise**.
+Being a leaf, it is a valid scalar to autograd, so `backward()` returns normally,
+`param.grad` stays `None`, and the optimizer step does nothing:
 
 ```
 param grad after backward(): None
 param changed: False
 ```
 
-Training would appear to run for the configured 5 epochs while every weight stayed at
-initialisation. No exception, no NaN, no warning — which is how the defect survived in the
-repository. This is worse than a crash: a crash at least tells you something is wrong.
+Training would appear to run for the configured 5 epochs with every weight still at
+initialisation. No exception, no NaN, no warning — which is how it survived in the repository.
+This is worse than a crash: a crash at least tells you something is wrong.
 
-The contrastive and diversity terms have the same defect in subtler form. They wrap
-`SentenceTransformer.encode()` output in `torch.tensor(...)`, which detaches it, and the
-sentence-transformer encoders are frozen anyway — so even wired correctly, those terms could
-not reach the generator.
-
-**Fixed.** `src/trainable_losses.py` provides a real loss:
-
-- `generation_loss()` — BART's own teacher-forced cross-entropy via
-  `forward(input_ids, attention_mask, labels)`. Differentiable w.r.t. all generator weights.
-- `contrastive_loss()` — InfoNCE over candidate log-probabilities scored by the *generator*
-  rather than a frozen sentence encoder, so gradients actually flow.
-- `sequence_f1()` — retained as a **metric**, explicitly not as a loss.
-
-Measured on a tiny randomly-initialised BART (no checkpoint download):
-
-| | Old loss | New loss |
-|---|---|---|
-| `requires_grad` | True | True |
-| `grad_fn` | **None** | `NllLossBackward0` |
-| Parameters receiving gradient | 0 | 91 |
-| Total gradient magnitude | — | 76.17 |
-
-`tests/test_loss_differentiable.py` (7 tests) asserts this, so the defect cannot silently
-return. `HybridRAGCAG.compute_generation_loss` is retained for backwards compatibility but now
-raises `DeprecationWarning` and returns a detached constant that is *not* fake-flagged.
+**Fixed** in `src/trainable_losses.py`: BART's own teacher-forced cross-entropy
+(`grad_fn = NllLossBackward0`; 91/91 generator parameters receive gradient; total |grad| = 76.17),
+plus an InfoNCE contrastive term scored by the generator rather than a frozen encoder.
+Sequence F1 is retained as a *metric*, not a loss. `tests/test_loss_differentiable.py`
+(7 tests) asserts this.
 
 ### 1.5 Fake evaluations can no longer silently regenerate fake results
 
-Both retracted scripts wrote fabricated numbers to disk, and the original output paths pointed
-at `/mnt/user-data/outputs/`, a path that does not exist here. Anyone running them would
-regenerate the retracted data under a new name.
-
-Both now refuse to run without an explicit opt-in flag, and when forced, write only to
-`results/UNSAFE_*.json` — never `results/*.json`:
+Both retracted scripts wrote to hardcoded `/mnt/user-data/outputs/` paths. They now refuse to
+run without an explicit opt-in flag, and when forced write only to `results/UNSAFE_*.json`:
 
 ```bash
 $ python src/expert_evaluation.py
 REFUSING TO RUN: the 'human expert' responses in this script are
 hardcoded strings in this file. No human study took place.
-For real numbers:  python src/run_honest_evaluation.py
 ```
 
-| Script | Opt-in flag | Forced output path |
+| Script | Opt-in flag | Forced output |
 |---|---|---|
 | `option3_full_scale_evaluation.py` | `--i-know-this-is-fake` | `results/UNSAFE_option3_fabricated_results.json` |
 | `expert_evaluation.py` | `--i-know-these-arent-human` | `results/UNSAFE_expert_simulated_results.json` |
 
-The originals are kept intact so the defect stays auditable rather than being deleted.
-
 ### 1.6 The README's usage example could not run
 
-The documented example imported `HybridRAGCAGSystem` and called `.index_corpus()` and
-`.answer_question()`. **None of those exist** — `grep -c "class HybridRAGCAGSystem"` returns 0 —
-so the first line of the primary example raised `ImportError`. The README now documents the real
-API (`HybridRAGCAG` + `HybridConfig`, `retriever.build_index()`, `model(questions=...)`).
-
-The documented `--evaluation_tier` flag was also phantom: `train_and_evaluate.py` accepted only
-`--mode`, `--train_data`, `--dev_data`, `--output_dir`, `--max_train_samples`, and
-`--max_eval_samples`, so the documented command failed with "unrecognized arguments". The flag
-now exists and warns that Tier 1 has no reproducible implementation.
-
-### 1.7 Mechanism claims with no corresponding code
-
-| README claim | Reality |
-|---|---|
-| "Bi-encoder with contrastive learning" | frozen `all-mpnet-base-v2`; retriever is not trained |
-| "FAISS similarity search" | ✅ true (`IndexFlatIP`) |
-| "SVD dimension reduction" | not present |
-| "Learned reranking weights" | frozen encoder + cosine similarity |
-| "Multi-candidate generation + confidence estimation" | generation ✅; confidence estimation absent |
-| "Dynamic fusion H(q) = α(q)·R + (1−α(q))·G" | fixed 0.6/0.4 cosine; α is a constant, not a function of q |
-| "Joint loss" | see §1.4 |
+It imported `HybridRAGCAGSystem` and called `.index_corpus()` / `.answer_question()`.
+**None exist** — the example raised `ImportError` on line 1. The README now documents the real
+API. The documented `--evaluation_tier` flag was also phantom; it now exists and warns that
+Tier 1 has no reproducible implementation.
 
 ---
 
-## 2. What was re-measured
+## 2. Lexical baselines (re-measured)
 
-Replaced the dictionary baselines with real, reproducible models in
-`src/honest_baselines.py`: **TF-IDF cosine retrieval** and **Okapi BM25** (k1=1.5, b=0.75), each
-paired with a coverage-weighted extractive answer selector. Both are genuine models, implemented
-in `numpy`/`scikit-learn`, requiring no GPU and no network.
+`src/honest_baselines.py` replaces the dictionaries with real TF-IDF and Okapi BM25, paired
+with a coverage-weighted extractive selector. numpy/scikit-learn only — no GPU, no network.
 
-**Tier-2 dataset as shipped: 100 documents, 55 questions.** Metrics are SQuAD-style token-F1,
-exact match after normalization, and answer-containment.
+| System | token-F1 | EM | Answer containment |
+|---|---|---|---|
+| TF-IDF + Extractive | 0.177 | 0.000 | 0.309 |
+| BM25 + Extractive | 0.177 | 0.000 | 0.309 |
+| Oracle extractive (ceiling) | 0.187 | 0.000 | 0.382 |
 
-| System | token-F1 | EM | Answer containment | Wall clock |
-|---|---|---|---|---|
-| TF-IDF + Extractive | 0.177 | 0.000 | 0.309 | 0.2 s |
-| BM25 + Extractive | 0.177 | 0.000 | 0.309 | 0.1 s |
-| Oracle extractive (ceiling, not a baseline) | 0.187 | 0.000 | 0.382 | — |
-
-Full per-question predictions: `results/verified_tier2.json`.
-
-### 2.1 Why these numbers are low — and why that is the correct result
-
-The low score is not a retrieval failure. It is a property of the shipped dataset, and it is the
-most important finding in this file.
+### 2.1 Why the ceiling is so low
 
 **Only 21 of 55 gold answers (38.2%) appear anywhere in the 100-document corpus.**
 
@@ -236,135 +156,195 @@ most important finding in this file.
 | hard (15) | 1/15 — 7% |
 | very_hard (20) | 0/20 — **0%** |
 
-For 34 of 55 questions, **no retrieval system of any kind can produce the gold answer**, because
-the answer is not in the corpus. The dataset's 35 hard/very-hard questions are answerable only
-from parametric model knowledge, not from retrieval.
+For 34 of 55 questions no retrieval system can produce the gold answer. The oracle ceiling is
+therefore F1 0.187, and **the retracted "Hybrid 0.276" is above it** — direct arithmetic proof
+that the number was not measured on this dataset.
 
-This bounds the entire evaluation: an oracle that perfectly selects the gold sentence scores
-F1 = 0.187. Every real system is capped at or below that. The best achievable score on this
-benchmark with perfect retrieval is **0.187**, and both real systems reach 0.177 — about 95% of
-the achievable ceiling.
+---
 
-The originally reported "Hybrid 0.276" is therefore *above the oracle ceiling*. No system,
-however good, could have produced it on this data. That is direct arithmetic evidence that the
-number was not measured on this dataset.
+## 3. Statistical comparison (lexical)
 
-### 2.2 Token-F1 systematically understates extractive systems
+| Comparison | Mean ΔF1 | Bootstrap 95% CI | Wilcoxon p |
+|---|---|---|---|
+| BM25 − TF-IDF | 0.000 | [0.000, 0.000] | not applicable (0 non-zero differences) |
 
-The F1 figures understate quality for a metric reason: gold answers are short ("Paris", "Mount
-Everest" — median 14 words) while any extractive prediction is a full sentence ("Paris is the
-capital and most populous city of France..."). Precision is structurally capped near
-1/length, so a *correct* extraction scores around 0.2. Answer-containment, reported alongside,
-rises to 0.309 for the same predictions.
+Both retrievers selected identical sentences on all 55 questions. Reported as inconclusive,
+not as "no difference".
 
-Both metrics are reported because either alone is misleading. The pre-registered choice in
-`docs/METHODS.md` was token-F1 as primary, and that choice is retained here.
+---
 
-Sample outputs (predictions are correct; the gold strings are just short):
+## 4. What was NOT run (lexical tier)
 
-| Question | Gold | Prediction |
+| Item | Status | Reason |
 |---|---|---|
-| What is the capital of France? | Paris | "Paris is the capital and most populous city of France, located in nort…" |
-| Who created the Python programming language? | Guido van Rossum | "Python is a high-level, interpreted programming language created by Gu…" |
-| What is the tallest mountain in the world? | Mount Everest | "The Himalayan mountain range spans five countries (India, Nepal, Bhuta…" |
-
-The third row is a genuine miss: BM25 ranks the range document above the peak document. That is
-real retrieval error and is counted as such.
+| FiD / T5-FiD / DPR+FiD | **NOT RUN — never existed** | Labels referred to dictionary lookups. |
+| Tier 3 "expert" comparison | **WITHDRAWN** | "Human expert" responses are hardcoded strings. |
 
 ---
 
-## 3. Statistical comparison
-
-Following the pre-registration in `docs/METHODS.md` (Wilcoxon signed-rank plus a 10,000-sample
-bootstrap CI on the mean paired difference):
-
-| Comparison | Mean ΔF1 | Bootstrap 95% CI | Wilcoxon p | Significant |
-|---|---|---|---|---|
-| BM25 − TF-IDF | 0.000 | [0.000, 0.000] | not applicable (0 non-zero differences) | No |
-
-The two retrievers selected **identical sentences on all 55 questions**, so the paired
-differences are identically zero. There is nothing to test; the comparison is reported as
-inconclusive rather than as a null result of "no difference".
-
-This is itself informative: on a 100-document corpus, sparse lexical retrieval is saturated, and
-the choice between TF-IDF and BM25 is not what limits performance here. The retrieval ceiling in
-§2.1 is.
-
----
-
-## 4. What was NOT run, and why
-
-Reported as not-run rather than estimated.
-
-| System | Status | Reason |
-|---|---|---|
-| Hybrid (dense bi-encoder + BART-large) | **NOT RUN** | Requires torch + a ~1.6 GB BART checkpoint. Not installable in this environment (3 GB RAM, no GPU; the torch wheel installed but its native libraries fail to load on this filesystem). |
-| FiD / T5-FiD / DPR+FiD | **NOT RUN — never existed** | The original labels referred to dictionary lookups. There is no real implementation to evaluate, and re-reporting numbers under those labels would repeat the original misrepresentation. |
-| Tier 1 (12 questions) | **NOT RUN** | Depends on the dense+BART stack above. |
-| Tier 3 "expert" comparison | **WITHDRAWN** | The "human expert" responses are hardcoded strings (`'expert_id': 'quantum_expert_1'`, with response text inline). No human was involved. The p = 2.1e-15 in `results/expert_evaluation_results.json` is real scipy output, but it measures AI-vs-hardcoded-text, not AI-vs-human. |
-
-An OpenRouter API key would make the Hybrid row runnable (hosted generator instead of local
-BART). That is a legitimate option, but it changes the system under test, costs money per run,
-and reduces reproducibility relative to a pinned local checkpoint. It was not used.
-
----
-
-## 5. Honest summary of the current state
-
-**What is real:** the architecture described in `docs/METHODS.md` (dense retrieval → reranking →
-multi-candidate generation → contrastive selection) is instantiated in
-`src/hybrid_rag_cag_system.py` and loads real models. The code is not fabricated.
-
-**What is not real:** every number that was published as a result. The baselines were
-dictionaries; the Tier-1 figures came from no executable code; the "human expert" was a literal.
-
-**What is now true:** two genuine retrieval models score F1 0.177 against a hard ceiling of
-0.187 on the shipped 55-question set, with 34/55 questions unanswerable from the corpus. No
-claim of superiority over any baseline is supported, because the benchmark cannot support one.
-
-**What would be needed for a real comparison:** (1) a corpus that actually contains the answers,
-(2) a real generator runnable in the target environment, (3) an n≥100 question set, and
-(4) a human-expert tier involving actual humans if expert parity is to be claimed.
-
-## 6. Reproducing
-
-```bash
-python src/run_honest_evaluation.py --output results/verified_tier2.json
-```
-
-Deterministic — no sampling, no seeds needed. Runs in under a second on CPU. Any discrepancy
-from the numbers in §2 is a bug worth reporting.
-
-Requires only `numpy`, `scikit-learn`, and `scipy` (plus `torch` for the loss tests).
-
-```bash
-pytest tests/ -q     # 7 passed, 1 skipped
-```
-
-## 7. Implementation changes made in this branch
-
-The retraction above is only useful if the defects stop recurring, so the code was changed too.
+## 5. Implementation changes
 
 | Change | File | Addresses |
 |---|---|---|
 | Real differentiable loss; F1 demoted to a metric | `src/trainable_losses.py` (new) | §1.4 |
 | Legacy loss deprecated, no longer fake-flagged | `src/hybrid_rag_cag_system.py` | §1.4 |
 | Fabricated eval refuses to run; output forced to `UNSAFE_*` | `src/option3_full_scale_evaluation.py` | §1.5 |
-| Simulated "human expert" eval refuses to run; output forced to `UNSAFE_*` | `src/expert_evaluation.py` | §1.5 |
+| Simulated "human expert" eval refuses to run | `src/expert_evaluation.py` | §1.5 |
 | `--evaluation_tier` flag now exists and warns | `src/train_and_evaluate.py` | §1.6 |
-| Usage example now matches the real API | `README.md` | §1.6 |
+| Usage example matches the real API | `README.md` | §1.6 |
 | Regression tests for the loss | `tests/test_loss_differentiable.py` (new) | §1.4 |
 | Real baselines replacing the dictionaries | `src/honest_baselines.py` (new) | §1.1, §2 |
 
-### Still not fixed
+---
 
-- **The retriever is still frozen.** No contrastive retriever training exists. Doing it properly
-  needs a trainable bi-encoder with in-batch negatives (DPR-style), which is a research task,
-  not a patch. Until then, "bi-encoder with contrastive learning" remains an unsupported claim.
+## 6. Real Hybrid vs RAG vs CAG ablation
+
+This section is new. Unlike §2, it runs the **actual system**: a real `all-mpnet-base-v2`
+bi-encoder, a real FAISS `IndexFlatIP` index, and real `facebook/bart-large` decoding, over the
+same 55 questions, on all four branches of this repository.
+
+Reproduce with:
+
+```bash
+python src/real_ablation.py --branch <name> --out results/ablation_<name>.json
+```
+
+**Setup.** Decoding is greedy (`num_beams=1`, `do_sample=False`) for reproducibility. The three
+arms share every component except the one under test:
+
+- **RAG** — retrieve + rerank, single decode
+- **CAG** — multi-candidate generation, **no retrieval**, contrastive selection
+- **Hybrid** — retrieve + rerank + multi-candidate + contrastive selection
+
+Hardware: 2 vCPU, 3 GB RAM, no GPU. All 12 arm-runs completed at n=55 with 55 unique questions.
+
+### 6.1 Results — all four branches
+
+| Branch | Arm | F1 | EM | containment | wall clock |
+|---|---|---|---|---|---|
+| `main` | RAG | 0.1892 | 0.0000 | 0.3273 | 607 s |
+| `main` | CAG | 0.1705 | 0.0000 | 0.0182 | 2322 s |
+| `main` | Hybrid | 0.1821 | 0.0000 | 0.2727 | 4909 s |
+| `review-fixes` | RAG | 0.1892 | 0.0000 | 0.3273 | 1974 s |
+| `review-fixes` | CAG | 0.1705 | 0.0000 | 0.0182 | 2328 s |
+| `review-fixes` | Hybrid | 0.1821 | 0.0000 | 0.2727 | 4909 s |
+| `improve/real-model` | RAG | 0.1892 | 0.0000 | 0.3273 | 1974 s |
+| `improve/real-model` | CAG | 0.1705 | 0.0000 | 0.0182 | 1321 s |
+| `improve/real-model` | Hybrid | 0.1822 | 0.0000 | 0.2727 | 4910 s |
+| `mavis/verify-and-reproduce` | RAG | 0.1892 | 0.0000 | 0.3273 | 1938 s |
+| `mavis/verify-and-reproduce` | CAG | 0.1705 | 0.0000 | 0.0182 | 1316 s |
+| `mavis/verify-and-reproduce` | Hybrid | 0.1822 | 0.0000 | 0.2727 | 4910 s |
+
+### 6.2 The four branches are behaviourally identical
+
+RAG is **bit-identical** across all four branches (0.1892 / 0.3273). CAG is identical too
+(0.1705 / 0.0182). Hybrid differs only in the fourth decimal (0.1821 vs 0.1822).
+
+Two of these branches contain substantial code changes — a rewritten differentiable loss, a
+new honest-baselines module, retraction edits across five files. **None of it changed a single
+output.** This benchmark cannot distinguish the branches, which is itself the finding: the
+reported differences between them are smaller than the benchmark's ability to resolve anything.
+
+### 6.3 Hybrid does not beat RAG
+
+Paired per-question tests (identical on every branch; `main` shown):
+
+| Comparison | Metric | Mean Δ | Bootstrap 95% CI | Wilcoxon p | Verdict |
+|---|---|---|---|---|---|
+| Hybrid − RAG | F1 | −0.0071 | [−0.0188, +0.0043] | 0.568 | not significant |
+| Hybrid − RAG | containment | −0.0545 | [−0.1273, +0.0182] | n/a (5 non-zero) | not significant |
+| Hybrid − CAG | F1 | +0.0115 | [−0.0137, +0.0361] | 0.402 | not significant |
+| Hybrid − CAG | containment | +0.2545 | [+0.1455, +0.3818] | 0.0002 | **significant** |
+| RAG − CAG | F1 | +0.0187 | [−0.0047, +0.0420] | 0.148 | not significant |
+| RAG − CAG | containment | +0.3091 | [+0.1818, +0.4364] | <0.0001 | **significant** |
+
+**The Hybrid pipeline is worse than plain RAG on both metrics** (F1 0.1821 vs 0.1892;
+containment 0.2727 vs 0.3273) at **2.5× the wall clock** (4909 s vs 607–1974 s). The difference
+is not statistically significant, so the honest reading is: *the additional machinery shows no
+measurable benefit and costs substantially more.*
+
+**CAG is broken as an ablation.** With no retrieval, its containment is 0.0182 — it essentially
+never produces text containing the gold answer. The "CAG-only" configuration has no path to a
+correct answer on this dataset.
+
+### 6.4 Root cause: BART-large is not instruction-tuned
+
+The single most important finding. Given the repository's prompt format, the model **echoes the
+prompt** rather than answering:
+
+```
+input:  "question: What is the capital of France? context: Paris is the capital of France."
+output: "question: What is the capital of France? context: Paris is the city of France."
+```
+
+`facebook/bart-large` is a pretrained language model, never instruction-tuned for QA. It
+continues text. Measured across decoding variants (`src/diagnose_generator.py`):
+
+| Variant | Echoes prompt | Contains gold |
+|---|---|---|
+| default (branch settings) | yes | yes |
+| `num_beams=5` | yes | yes |
+| `forced_bos_token_id` | yes | yes |
+| nucleus sampling (top_p 0.9) | yes | yes |
+
+**4 of 4 decoding variants echo the prompt.** No decoding flag fixes it, because the model was
+never trained to answer QA prompts.
+
+This explains the metric split: **containment (0.327 for RAG) is much higher than F1 (0.189)**
+precisely because the answer is often present inside the echoed prompt while the F1 denominator
+is inflated by all that echoed text. EM is 0.0000 on every arm of every branch for the same
+reason.
+
+It also means the absolute numbers in §6.1 are **not** a fair estimate of what the architecture
+could do with a working generator. They measure a prompt-echoing model.
+
+### 6.5 What this does and does not establish
+
+**Established (real evidence):**
+- The pipeline runs end-to-end with real model weights on all four branches.
+- Hybrid ≈ RAG, not Hybrid > RAG. The contrastive selection layer shows no measurable benefit.
+- CAG without retrieval is non-functional on this dataset.
+- Branches are behaviourally identical on this benchmark.
+- The generator defect is real, reproducible, and not fixable by decoding flags.
+
+**Not established:**
+- Whether the architecture would beat plain RAG **with a generator that can answer questions.**
+  That experiment needs an instruction-tuned model (or fine-tuning) and ≥16 GB RAM.
+- Any claim about MMLU, RULER, retrieval quality, or the "57.5% improvement."
+- Coverage of the four branches by this benchmark — §6.2 shows it resolves none of them.
+
+### 6.6 Next step
+
+Replace `generator_model` with an instruction-tuned QA model (e.g. a flan-t5 or instruct model)
+or fine-tune BART on the task, then re-run `real_ablation.py`. Until then, no comparison of
+these systems can be made, because the generator is the shared bottleneck.
+
+---
+
+## 7. Reproducing
+
+```bash
+# Lexical baselines (seconds, CPU-only)
+python src/run_honest_evaluation.py --output results/verified_tier2.json
+
+# Generator diagnosis (shows the prompt echo)
+python src/diagnose_generator.py
+
+# Real ablation (hours per branch on 2 vCPU, no GPU)
+python src/real_ablation.py --branch main --out results/ablation_main.json
+
+# Loss regression tests
+pytest tests/ -q
+```
+
+## 8. Still not fixed
+
+- **The retriever is frozen.** No contrastive retriever training exists; "bi-encoder with
+  contrastive learning" remains an unsupported claim.
 - **No training run was performed.** The loss is verified differentiable; the model was not
-  trained and no post-training metric is reported. Training BART-large needs ≳16 GB RAM.
-- **The 55-question dataset is still unfit for comparison.** 34/55 gold answers are absent from
-  the corpus (§2.1). Fixing that requires a new dataset, not better code.
-- **`improve/real-model` was not built on.** That branch deletes `docs/METHODS.md`, the most
-  honest document in the repository. It also duplicates work done here. It should be reconciled
-  manually rather than merged.
+  trained and no post-training metric is reported.
+- **The generator cannot answer questions** (§6.4). This is now the dominant limitation.
+- **The 55-question dataset is unfit for comparison** (§2.1): 34/55 answers are absent from the
+  corpus, capping any system at F1 0.187.
+- **`improve/real-model` was not built on** — it deletes `docs/METHODS.md`, the most honest
+  document here, and duplicates work done on this branch. Reconcile manually rather than merge.
