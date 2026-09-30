@@ -218,24 +218,42 @@ arms share every component except the one under test:
 
 Hardware: 2 vCPU, 3 GB RAM, no GPU. All 12 arm-runs completed at n=55 with 55 unique questions.
 
-### 6.1 Results — all four branches
+### 6.1 Branch inventory
 
-| Branch | Arm | F1 | EM | containment | wall clock |
+Four branches exist. There are no tags, no releases, and no forks. One pull request has ever
+been opened (#25, against `review-fixes`, still open).
+
+| # | Branch / PR | First commit | Latest commit | Commits | PR |
 |---|---|---|---|---|---|
-| `main` | RAG | 0.1892 | 0.0000 | 0.3273 | 607 s |
-| `main` | CAG | 0.1705 | 0.0000 | 0.0182 | 2322 s |
-| `main` | Hybrid | 0.1821 | 0.0000 | 0.2727 | 4909 s |
-| `review-fixes` | RAG | 0.1892 | 0.0000 | 0.3273 | 1974 s |
-| `review-fixes` | CAG | 0.1705 | 0.0000 | 0.0182 | 2328 s |
-| `review-fixes` | Hybrid | 0.1821 | 0.0000 | 0.2727 | 4909 s |
-| `improve/real-model` | RAG | 0.1892 | 0.0000 | 0.3273 | 1974 s |
-| `improve/real-model` | CAG | 0.1705 | 0.0000 | 0.0182 | 1321 s |
-| `improve/real-model` | Hybrid | 0.1822 | 0.0000 | 0.2727 | 4910 s |
-| `mavis/verify-and-reproduce` | RAG | 0.1892 | 0.0000 | 0.3273 | 1938 s |
-| `mavis/verify-and-reproduce` | CAG | 0.1705 | 0.0000 | 0.0182 | 1316 s |
-| `mavis/verify-and-reproduce` | Hybrid | 0.1822 | 0.0000 | 0.2727 | 4910 s |
+| 1 | `main` | 2025-11-16 | **2026-09-22** | 16 | — |
+| 2 | `review-fixes` | 2025-11-16 | **2026-09-26** | 17 | #25 (opened 2026-09-26, open) |
+| 3 | `improve/real-model` | 2025-11-16 | **2026-09-27** | 20 | — |
+| 4 | `mavis/verify-and-reproduce` | 2025-11-16 | **2026-09-30** | 19 | — |
 
-### 6.2 The four branches are behaviourally identical
+All four descend from the same 2025-11-16 root. Dates are branch/PR dates, not measurement
+dates; every branch was measured identically under the same conditions.
+
+### 6.2 Results by branch (dated)
+
+F1 / EM / containment, n=55 per cell.
+
+| Branch | Date | RAG F1 | CAG F1 | Hybrid F1 | Hybrid cont. | RAG cont. | CAG cont. | EM (all) |
+|---|---|---|---|---|---|---|---|---|
+| `main` | 2026-09-22 | 0.1892 | 0.1705 | 0.1821 | 0.2727 | 0.3273 | 0.0182 | 0.0000 |
+| `review-fixes` (#25) | 2026-09-26 | 0.1892 | 0.1705 | 0.1821 | 0.2727 | 0.3273 | 0.0182 | 0.0000 |
+| `improve/real-model` | 2026-09-27 | 0.1892 | 0.1705 | 0.1822 | 0.2727 | 0.3273 | 0.0182 | 0.0000 |
+| `mavis/verify-and-reproduce` | 2026-09-30 | 0.1892 | 0.1705 | 0.1822 | 0.2727 | 0.3273 | 0.0182 | 0.0000 |
+
+Wall clock per arm (seconds), same run:
+
+| Branch | Date | RAG | CAG | Hybrid |
+|---|---|---|---|---|
+| `main` | 2026-09-22 | 607 | 2322 | 4909 |
+| `review-fixes` | 2026-09-26 | 1974 | 2328 | 4909 |
+| `improve/real-model` | 2026-09-27 | 1974 | 1321 | 4910 |
+| `mavis/verify-and-reproduce` | 2026-09-30 | 1938 | 1316 | 4910 |
+
+### 6.3 The four branches are behaviourally identical
 
 RAG is **bit-identical** across all four branches (0.1892 / 0.3273). CAG is identical too
 (0.1705 / 0.0182). Hybrid differs only in the fourth decimal (0.1821 vs 0.1822).
@@ -245,7 +263,7 @@ new honest-baselines module, retraction edits across five files. **None of it ch
 output.** This benchmark cannot distinguish the branches, which is itself the finding: the
 reported differences between them are smaller than the benchmark's ability to resolve anything.
 
-### 6.3 Hybrid does not beat RAG
+### 6.4 Hybrid does not beat RAG
 
 Paired per-question tests (identical on every branch; `main` shown):
 
@@ -264,64 +282,150 @@ is not statistically significant, so the honest reading is: *the additional mach
 measurable benefit and costs substantially more.*
 
 **CAG is broken as an ablation.** With no retrieval, its containment is 0.0182 — it essentially
-never produces text containing the gold answer. The "CAG-only" configuration has no path to a
-correct answer on this dataset.
-
-### 6.4 Root cause: BART-large is not instruction-tuned
-
-The single most important finding. Given the repository's prompt format, the model **echoes the
-prompt** rather than answering:
-
-```
-input:  "question: What is the capital of France? context: Paris is the capital of France."
-output: "question: What is the capital of France? context: Paris is the city of France."
-```
-
-`facebook/bart-large` is a pretrained language model, never instruction-tuned for QA. It
-continues text. Measured across decoding variants (`src/diagnose_generator.py`):
-
-| Variant | Echoes prompt | Contains gold |
-|---|---|---|
-| default (branch settings) | yes | yes |
-| `num_beams=5` | yes | yes |
-| `forced_bos_token_id` | yes | yes |
-| nucleus sampling (top_p 0.9) | yes | yes |
-
-**4 of 4 decoding variants echo the prompt.** No decoding flag fixes it, because the model was
-never trained to answer QA prompts.
-
-This explains the metric split: **containment (0.327 for RAG) is much higher than F1 (0.189)**
-precisely because the answer is often present inside the echoed prompt while the F1 denominator
-is inflated by all that echoed text. EM is 0.0000 on every arm of every branch for the same
-reason.
-
-It also means the absolute numbers in §6.1 are **not** a fair estimate of what the architecture
-could do with a working generator. They measure a prompt-echoing model.
-
-### 6.5 What this does and does not establish
-
-**Established (real evidence):**
-- The pipeline runs end-to-end with real model weights on all four branches.
-- Hybrid ≈ RAG, not Hybrid > RAG. The contrastive selection layer shows no measurable benefit.
-- CAG without retrieval is non-functional on this dataset.
-- Branches are behaviourally identical on this benchmark.
-- The generator defect is real, reproducible, and not fixable by decoding flags.
-
-**Not established:**
-- Whether the architecture would beat plain RAG **with a generator that can answer questions.**
-  That experiment needs an instruction-tuned model (or fine-tuning) and ≥16 GB RAM.
-- Any claim about MMLU, RULER, retrieval quality, or the "57.5% improvement."
-- Coverage of the four branches by this benchmark — §6.2 shows it resolves none of them.
-
-### 6.6 Next step
-
-Replace `generator_model` with an instruction-tuned QA model (e.g. a flan-t5 or instruct model)
-or fine-tune BART on the task, then re-run `real_ablation.py`. Until then, no comparison of
-these systems can be made, because the generator is the shared bottleneck.
+never produces text containing the gold answer.
 
 ---
 
-## 7. Reproducing
+## 7. Why it fails — failure diagnosis
+
+Following the Ragas-style approach (context recall, faithfulness, dead zones, question
+clusters) rather than reporting one aggregate accuracy number. Reproduce with
+`python src/diagnose_failures.py`; full output in `results/diagnosis.json`.
+
+### 7.1 Context recall
+
+Does the retrieved set actually contain the evidence?
+
+| k | Gold answer in top-k retrieved docs |
+|---|---|
+| 1 | 20/55 — **36.4%** |
+| 3 | 21/55 — 38.2% |
+| 5 | 21/55 — 38.2% |
+| 10 | 21/55 — 38.2% |
+
+**Recall@1 equals recall@10.** Of the 21 retrievable answers, **20 rank first**. Retrieval is
+not the problem, and no amount of retriever work would change these numbers.
+
+### 7.2 Where the evidence is actually lost
+
+| Layer | Count | Share | Recoverable? |
+|---|---|---|---|
+| Gold answer absent from the corpus entirely | 34/55 | **61.8%** | **No** — no retriever can return it |
+| Gold answer present but ranked below top-10 | 0/55 | **0.0%** | — |
+| Answer at rank 3 | 1/55 | 1.8% | yes |
+| Answer at rank 1 | 20/55 | 36.4% | yes |
+
+**Retrieval contributes exactly zero failure.** The entire deficit is a corpus gap.
+
+### 7.3 The failure is question-type specific
+
+| Difficulty | Context recall@10 |
+|---|---|
+| easy (10) | 10/10 — 100% |
+| medium (10) | 10/10 — 100% |
+| hard (15) | 1/15 — 6.7% |
+| very_hard (20) | 0/20 — **0%** |
+
+The 34 unrecoverable questions are almost entirely **synthesising** types: 14 multi-hop,
+6 conceptual, 3 cross-domain, 2 analogical, plus 9 singletons. Their gold answers are
+*composed* sentences, not spans that exist in any document:
+
+| Type | Gold answer (truncated) |
+|---|---|
+| multi-hop | "They are complementary processes where photosynthesis pr…" |
+| multi-hop | "Both were Italian Renaissance artists who created master…" |
+| multi-hop | "Mount Everest at 8,848 meters is much taller than the Ei…" |
+
+These demand synthesis the corpus was never built to support. This is a dataset defect, not a
+model defect.
+
+### 7.4 Embedding dead zones
+
+| Metric | Value |
+|---|---|
+| Documents never retrieved across 55 queries | 2/100 (2.0%) |
+| Documents retrieved ≤1 time | 9/100 (9.0%) |
+
+The corpus has few true dead zones. This is consistent with 7.1: documents are reachable, they
+just don't contain the answers being asked about.
+
+### 7.5 Metric ceiling
+
+| Gold-answer length | Count |
+|---|---|
+| 1–3 words | 25 |
+| 4–8 words | 17 |
+| 9–20 words | 9 |
+| 21+ words | 4 |
+
+Most golds are short. Token-F1 against a long extractive sentence is capped near
+1/length, which is why containment (0.327) exceeds F1 (0.189) for RAG. That gap is a metric
+artefact, not a quality difference.
+
+### 7.6 The generator cannot answer questions
+
+`facebook/bart-large` is a pretrained LM, never instruction-tuned for QA. Given the repo's
+prompt it echoes the prompt. Measured in `src/diagnose_generator.py`:
+
+| Decoding variant | Echoes prompt |
+|---|---|
+| default (branch settings) | yes |
+| `num_beams=5` | yes |
+| `forced_bos_token_id` | yes |
+| nucleus sampling (top_p 0.9) | yes |
+
+**4 of 4 echo.** No decoding flag fixes it. This is why EM is 0.0000 on all twelve runs.
+
+---
+
+## 8. What would actually improve it
+
+Ranked by measured impact per unit of effort. The ceiling test
+(`python src/ceiling_test.py`, `results/ceiling.json`) measures what a fixed reader would unlock
+**with retrieval completely unchanged**:
+
+| Reader | F1 | containment | EM | Cost |
+|---|---|---|---|---|
+| Hybrid (current) | 0.1821 | 0.2727 | 0.0000 | 4909 s, 406 M params |
+| retrieval-only (emit top-1 doc) | 0.1902 | 0.3636 | 0.0000 | <1 s |
+| **extractive-span (lexical, no LLM)** | **0.2277** | 0.2364 | 0.0000 | **<1 s, 0 params** |
+| oracle-span (emits gold by construction) | 1.0000 | 1.0000 | 1.0000 | — |
+
+*Caveat: the oracle row is tautological — it returns the gold answer by definition, so 1.0 is
+not a finding. The meaningful comparison is the three rows above it.*
+
+**1. Replace the generator. Highest impact, already quantified.** A five-line lexical span
+extractor scores **F1 0.2277 versus the 406 M-parameter Hybrid's 0.1821** — better on F1, in
+under a second instead of 82 minutes, with no model weights. An instruction-tuned reader
+(fine-tuned T5/flan-t5) should beat both. This single change is worth more than every
+architectural change currently in the repo.
+
+**2. Rebuild the dataset. Required for any valid claim.** 34/55 questions are unanswerable from
+the corpus. Two options: (a) restrict the benchmark to the 21 extractable questions and report
+the restriction explicitly; (b) build a corpus that actually supports the question types. Until
+one is done, *no* system can be ranked, and the published "57.5% improvement" is arithmetically
+impossible (F1 0.276 exceeds the 0.187 ceiling).
+
+**3. Report containment alongside F1, and stop using EM.** EM is structurally 0 for any
+extractive system and for the current generator. Containment is the honest primary metric here;
+it separates a system that *found* the answer from one that *formatted* it well.
+
+**4. Do not invest in retrieval.** Recall@1 already equals recall@10. Reranking, hybrid search,
+graph indexes, and the contrastive reranker are all solving a problem this corpus does not have.
+
+**5. Drop or redefine the CAG ablation.** Without retrieval its containment is 0.0182 — it
+cannot work by construction. Either give it a corpus-appropriate task or remove it.
+
+**6. Fix the contrastive selection layer, or remove it.** It costs 2.5× wall clock and does not
+improve F1 (p=0.568). Either demonstrate a benefit on a valid benchmark or stop paying for it.
+
+**Expected outcome if 1 + 2 are done:** a benchmark where retrieval is provably sufficient
+(20/21 answers at rank 1) and the reader is not a prompt-echo, which is the first configuration
+in this repository's history capable of supporting a real claim either way.
+
+---
+
+## 9. Reproducing
 
 ```bash
 # Lexical baselines (seconds, CPU-only)
@@ -330,6 +434,12 @@ python src/run_honest_evaluation.py --output results/verified_tier2.json
 # Generator diagnosis (shows the prompt echo)
 python src/diagnose_generator.py
 
+# Failure diagnosis: context recall, dead zones, question clusters
+python src/diagnose_failures.py
+
+# Ceiling test: what a fixed reader would unlock, retrieval unchanged
+python src/ceiling_test.py
+
 # Real ablation (hours per branch on 2 vCPU, no GPU)
 python src/real_ablation.py --branch main --out results/ablation_main.json
 
@@ -337,14 +447,15 @@ python src/real_ablation.py --branch main --out results/ablation_main.json
 pytest tests/ -q
 ```
 
-## 8. Still not fixed
+## 10. Still not fixed
 
 - **The retriever is frozen.** No contrastive retriever training exists; "bi-encoder with
   contrastive learning" remains an unsupported claim.
 - **No training run was performed.** The loss is verified differentiable; the model was not
   trained and no post-training metric is reported.
-- **The generator cannot answer questions** (§6.4). This is now the dominant limitation.
-- **The 55-question dataset is unfit for comparison** (§2.1): 34/55 answers are absent from the
-  corpus, capping any system at F1 0.187.
+- **The generator cannot answer questions** (§7.6). This is the dominant in-pipeline limitation.
+- **The 55-question dataset is unfit for comparison** (§2.1, §7.2): 34/55 answers are absent
+  from the corpus, capping any system at F1 0.187. Retrieval itself is already perfect
+  (recall@1 = recall@10 = 38.2%), so this is a corpus defect, not a retriever defect.
 - **`improve/real-model` was not built on** — it deletes `docs/METHODS.md`, the most honest
   document here, and duplicates work done on this branch. Reconcile manually rather than merge.
