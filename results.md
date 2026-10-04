@@ -440,12 +440,69 @@ python src/diagnose_failures.py
 # Ceiling test: what a fixed reader would unlock, retrieval unchanged
 python src/ceiling_test.py
 
-# Real ablation (hours per branch on 2 vCPU, no GPU)
+# Real ablation (hours per branch on 2 vCPU, no GPU).
+# Run this from a checkout of the branch named in --branch: the script now
+# refuses to write a results file labelled with a branch it is not measuring.
 python src/real_ablation.py --branch main --out results/ablation_main.json
 
-# Loss regression tests
+# Dependency-independent checks (standard library + numpy only)
+python tools/check_integrity.py
+
+# Loss regression tests (needs requirements-dev.txt, plus torch/transformers)
 pytest tests/ -q
 ```
+
+### 9.1 What was executed for this revision, and what it produced
+
+Recorded so the commands above are not merely asserted. Run on 2026-10-04 in a
+container with **no** scikit-learn, no scipy, and no torch installed.
+
+| Command | Outcome |
+|---|---|
+| `python src/run_honest_evaluation.py` | Completed. Reproduced the §2 table exactly — F1 0.177143 / EM 0.000000 / containment 0.309091 for both TF-IDF and BM25, and 0.187184 / 0.000000 / 0.381818 for the oracle ceiling. All 110 per-question predictions byte-identical to `results/verified_tier2.json`. |
+| `python tools/check_integrity.py` | 3/3 checks pass. Each was separately confirmed to fail when the corresponding defect is reintroduced. |
+| `python -m compileall -q src tests tools` | Clean. |
+| `python src/real_ablation.py --branch <other-branch>` | Correctly refused: reports the mismatch and exits non-zero. |
+| `python src/diagnose_generator.py`, `src/ceiling_test.py`, `src/diagnose_failures.py` | **Not run** — each imports torch at module scope, which is not installed here. Their committed outputs are unchanged by this revision and were not re-measured. |
+| `pytest tests/ -q` | **Not run** — pytest, torch and transformers are unavailable here. `tests/test_loss_differentiable.py` is unmodified by this revision; its 7 tests remain unverified by this author. |
+
+This revision therefore adds **no** new scientific result and changes no number
+in §1–§8. It repairs the machinery those numbers come from.
+
+### 9.2 Two defects that made the command above unusable, found by running it
+
+1. **`TFIDFRetriever.top_k` raised `IndexError: invalid index to scalar variable`**
+   without scikit-learn. The pure-numpy fallback existed for exactly that case and
+   was annotated `# pragma: no cover`, so nothing ever exercised it. The matmul
+   already produced one score per document; a trailing `[0]` collapsed that vector
+   to a scalar, and the following `sims[i]` then indexed a scalar. The documented
+   command could not run on a machine without scikit-learn.
+2. **`requirements.txt` was missing `nltk` and `rouge-score`**, both imported at
+   module scope by `src/hybrid_rag_cag_system.py`, and `pytest`, which
+   CONTRIBUTING.md told contributors to run. A clean
+   `pip install -r requirements.txt` therefore produced a checkout whose main
+   module could not be imported at all.
+
+`src/real_ablation.py` additionally took `--branch` as an unvalidated label and
+required `HYBRID_BRANCH_DIR` to be exported by hand, so the §9 command above did
+not run as written and a results file could be labelled with a branch it never
+measured. It now locates its own checkout, records the evaluated branch and commit
+in the output JSON, and refuses a mismatched label.
+
+### 9.3 Not fixed here, and still true
+
+- `results/verified_tier2.json` contains a bare `NaN`
+  (`comparisons.BM25_vs_TFIDF_F1.n_nonzero_diffs`), which is not valid JSON per
+  RFC 8259 and is emitted whenever scipy is absent. The committed file therefore
+  does not parse under a strict reader. Regenerating it would rewrite a results
+  artefact, which is out of scope for a code fix; the generator is left alone so
+  the defect stays visible rather than being papered over.
+- `compute_bleu` and `compute_meteor` in `src/hybrid_rag_cag_system.py` catch
+  bare `except:` and return `0.0`, so a missing NLTK corpus would silently
+  report BLEU-4 and METEOR as `0.000` for every example. Unchanged: the module
+  needs torch to import, so no test of the change could be run here.
+- `tests/test_loss_differentiable.py` is not exercised in CI. It needs torch,
+  transformers and a tokenizer download.
 
 ## 10. Still not fixed
 

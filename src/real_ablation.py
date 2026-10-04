@@ -24,6 +24,21 @@ Determinism
 -----------
 BART decoding here is greedy (``num_beams=1``, ``do_sample=False``), so results
 are reproducible. Wall-clock is recorded but never used for any claim.
+
+Provenance
+----------
+``--branch`` is only a *label*; the code that actually runs comes from the
+checkout at ``HYBRID_BRANCH_DIR``. Those two can disagree, and a results file
+labelled with a branch it never measured is exactly the kind of quiet
+misattribution this repository exists to eliminate. So the script now:
+
+* defaults ``HYBRID_BRANCH_DIR`` to the checkout containing this file, which is
+  what makes the single-branch command in ``results.md`` §9 work from a clean
+  clone with no environment setup;
+* records the evaluated branch and commit SHA in the output JSON, and
+* refuses to write a file whose ``--branch`` label disagrees with the checkout,
+  unless ``--allow-unverified-branch`` is passed -- and then records
+  ``branch_label_verified: false`` so the mismatch survives into the artefact.
 """
 
 from __future__ import annotations
@@ -35,16 +50,73 @@ import json
 import os
 import re
 import string
+import subprocess
 import sys
 import time
 from collections import Counter
 from typing import Dict, List, Optional, Sequence
 
-BRANCH_DIR = os.environ.get("HYBRID_BRANCH_DIR")
-if not BRANCH_DIR:
-    raise SystemExit("set HYBRID_BRANCH_DIR to the checkout to evaluate")
+# The checkout this script itself lives in. Used as the default evaluation
+# target so that a plain `python src/real_ablation.py --branch main ...` works
+# without the caller first exporting HYBRID_BRANCH_DIR by hand.
+SELF_CHECKOUT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+BRANCH_DIR = os.environ.get("HYBRID_BRANCH_DIR") or SELF_CHECKOUT
+if not os.path.isdir(BRANCH_DIR):
+    raise SystemExit(
+        f"HYBRID_BRANCH_DIR={BRANCH_DIR!r} is not a directory. Point it at the "
+        "checkout to evaluate, or unset it to use the checkout containing "
+        "real_ablation.py."
+    )
 sys.path.insert(0, os.path.join(BRANCH_DIR, "src"))
 sys.path.insert(0, BRANCH_DIR)
+
+
+def git_provenance(path: str) -> Dict[str, Optional[str]]:
+    """Return the branch name and commit SHA of the checkout at ``path``.
+
+    Both fields are ``None`` when the directory is not a git working tree (an
+    extracted tarball, a vendored copy). Provenance is best-effort metadata:
+    it records what was measured and never gates the run.
+    """
+
+    def _rev(*args: str) -> Optional[str]:
+        try:
+            proc = subprocess.run(
+                ["git", "-C", path, *args],
+                capture_output=True, text=True, check=True,
+            )
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return proc.stdout.strip() or None
+
+    return {"branch": _rev("rev-parse", "--abbrev-ref", "HEAD"),
+            "commit": _rev("rev-parse", "HEAD")}
+
+
+def verify_branch_label(label: str, evaluated_branch: Optional[str]) -> Optional[str]:
+    """Return why ``label`` cannot be trusted, or ``None`` when it can be.
+
+    ``evaluated_branch`` is what git reports for the checkout being measured;
+    ``None`` means provenance is unavailable because that directory is not a git
+    working tree. An unavailable branch is reported as unverifiable rather than
+    waved through, because silently accepting it is how a results file ends up
+    carrying a branch name that describes some other revision.
+
+    Kept free of side effects and of argparse so that the decision can be
+    exercised directly by ``tools/check_integrity.py``.
+    """
+    if evaluated_branch is None:
+        return (
+            f"cannot verify the branch label {label!r}: {BRANCH_DIR!r} is not a "
+            "git working tree"
+        )
+    if evaluated_branch != label:
+        return (
+            f"--branch {label!r} does not match the checkout being evaluated "
+            f"({evaluated_branch!r} at {BRANCH_DIR})"
+        )
+    return None
 
 
 # --------------------------------------------------------------------------- #
@@ -254,7 +326,31 @@ def main():
     ap.add_argument("--branch", required=True)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--out", required=True)
+    ap.add_argument(
+        "--allow-unverified-branch", action="store_true",
+        help="Write the results even if --branch disagrees with the checkout "
+             "being evaluated. The mismatch is recorded in the output JSON as "
+             "branch_label_verified=false.",
+    )
     args = ap.parse_args()
+
+    # A results file is evidence about a specific revision. Record which one was
+    # actually executed, and refuse to label it with a different branch unless
+    # the caller explicitly opts out of the check.
+    provenance = git_provenance(BRANCH_DIR)
+    actual = provenance.get("branch")
+    problem = verify_branch_label(args.branch, actual)
+    verified = problem is None
+    if problem and not args.allow_unverified_branch:
+        raise SystemExit(
+            f"refusing to write results labelled --branch {args.branch!r}: {problem}.\n"
+            f"Check out {args.branch!r}, or point HYBRID_BRANCH_DIR at a "
+            f"checkout of it.\nTo write the mismatch anyway and have it recorded "
+            f"in the output, pass --allow-unverified-branch."
+        )
+    if problem:
+        print(f"[{args.branch}] WARNING: {problem}; recording "
+              f"branch_label_verified=false", flush=True)
 
     corpus, questions = load_dataset()
     if args.limit:
@@ -275,6 +371,12 @@ def main():
 
     results = {
         "branch": args.branch,
+        "branch_label_verified": verified,
+        "provenance": {
+            "branch_dir": os.path.abspath(BRANCH_DIR),
+            "evaluated_branch": actual,
+            "evaluated_commit": provenance.get("commit"),
+        },
         "n_questions": len(questions),
         "n_documents": len(corpus),
         "models": {

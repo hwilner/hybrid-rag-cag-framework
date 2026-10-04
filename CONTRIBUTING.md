@@ -33,11 +33,33 @@ source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+`requirements.txt` carries the runtime dependencies. Test-only dependencies live in
+`requirements-dev.txt`, so a deployment install does not pull a test framework:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
 Run the test suite before and after your change:
 
 ```bash
 pytest
 ```
+
+Before opening a pull request, run the dependency-independent checks. They need
+only the standard library and numpy — no GPU, no network, no model checkpoints —
+and they are the same checks CI runs:
+
+```bash
+python tools/check_integrity.py
+```
+
+This fails if a module imported anywhere under `src/` or `tests/` is missing from
+the requirements manifests, if the no-scikit-learn retrieval path stops ranking
+documents, or if the ablation script can no longer prove which revision it
+measured. If you add an import, run it: a dependency that is not in a manifest is
+the exact failure that kept `src/hybrid_rag_cag_system.py` unimportable after a
+clean `pip install -r requirements.txt` until 2026-10-04.
 
 To sanity-check the evaluation pipeline end to end (Tier 1 is the fastest):
 

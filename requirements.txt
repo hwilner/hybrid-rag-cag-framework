@@ -14,6 +14,11 @@ datasets>=2.0.0
 scipy>=1.7.0
 matplotlib>=3.4.0
 seaborn>=0.11.0
+# Imported by src/hybrid_rag_cag_system.py for BLEU and METEOR. Previously
+# missing from this file, so `pip install -r requirements.txt` produced a
+# checkout whose main module could not be imported.
+nltk>=3.6.5
+rouge-score>=0.1.2
 
 # Utilities
 tqdm>=4.62.0
