@@ -45,7 +45,7 @@ try:  # sklearn is the only hard requirement
     from sklearn.metrics.pairwise import cosine_similarity
 
     _HAS_SKLEARN = True
-except Exception:  # pragma: no cover - degraded pure-numpy path
+except Exception:  # degraded pure-numpy path; covered by tools/check_integrity.py
     _HAS_SKLEARN = False
 
 STOPWORDS = {
@@ -177,7 +177,13 @@ class TFIDFRetriever:
         if _HAS_SKLEARN:
             sims = cosine_similarity(qv, self.matrix)[0]
         else:
-            sims = (np.array(self._vecs([question]))[0] @ self._vecs(self.corpus).T)[0]
+            # Shapes here are qv=(1, V) and corpus vectors=(N, V), so the
+            # matmul is already a 1-D score per document. The trailing `[0]`
+            # that used to close this expression collapsed that length-N
+            # vector to a scalar, so the `sims[i]` below raised
+            # "IndexError: invalid index to scalar variable" on any machine
+            # without scikit-learn -- the very case this fallback exists for.
+            sims = np.asarray(qv)[0] @ np.asarray(self._vecs(self.corpus)).T
         order = np.argsort(-sims)[:k]
         return [(int(i), float(sims[i])) for i in order]
 
