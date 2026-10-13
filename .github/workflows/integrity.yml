@@ -1,0 +1,56 @@
+name: integrity
+
+# This repository makes one claim that CI can actually police: that the
+# numbers in results.md come from the code in src/. Before this workflow
+# existed, nothing ran on push, and three separate defects sat in the tree
+# unnoticed -- a dependency missing from requirements.txt, a retrieval path
+# that raised on any machine without scikit-learn, and an ablation script
+# that would label its output with a branch it never measured.
+#
+# Scope, stated plainly rather than implied:
+#   * This job installs numpy ONLY. It exercises the lexical tier, which is
+#     the tier results.md §2-§3 actually report, and it runs the integrity
+#     checks in tools/check_integrity.py.
+#   * It deliberately does NOT run tests/test_loss_differentiable.py. That
+#     suite needs torch, transformers and a facebook/bart-base tokenizer
+#     download; running it here would make a 30-second check into a several-
+#     minute, network-dependent one. It remains run locally with
+#     `pytest tests/`. Adding it is a separate piece of work, not a silent
+#     omission.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integrity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install the lexical tier's only dependency
+        run: python -m pip install --disable-pip-version-check "numpy>=1.21.0"
+
+      - name: Byte-compile every source file
+        # Catches syntax errors in files the other steps never import, such as
+        # the torch-dependent modules.
+        run: python -m compileall -q src tests tools
+
+      - name: Integrity checks
+        run: python tools/check_integrity.py
+
+      - name: Lexical tier smoke test
+        # Runs the pipeline behind README "The one command that works" and
+        # results.md §2-§3. This is the check that fails on the TF-IDF
+        # fallback bug. The output goes to a scratch path so the job cannot
+        # commit a results file.
+        run: python src/run_honest_evaluation.py --output "${RUNNER_TEMP}/verified_tier2.json"

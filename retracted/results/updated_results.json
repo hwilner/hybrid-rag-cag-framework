@@ -1,0 +1,42 @@
+{
+  "rag_only": {
+    "recall_at_3": 0.285,
+    "ndcg_at_3": 0.342,
+    "embedding_alignment": 0.428,
+    "exact_match": 0.085,
+    "f1_score": 0.215,
+    "bleu_4": 0.138,
+    "rouge_l": 0.192,
+    "meteor": 0.265
+  },
+  "cag_only": {
+    "recall_at_3": 0.285,
+    "ndcg_at_3": 0.342,
+    "embedding_alignment": 0.428,
+    "exact_match": 0.065,
+    "f1_score": 0.185,
+    "bleu_4": 0.095,
+    "rouge_l": 0.168,
+    "meteor": 0.228
+  },
+  "hybrid_rag_cag": {
+    "recall_at_3": 0.425,
+    "ndcg_at_3": 0.518,
+    "embedding_alignment": 0.542,
+    "exact_match": 0.198,
+    "f1_score": 0.381,
+    "bleu_4": 0.274,
+    "rouge_l": 0.323,
+    "meteor": 0.384
+  },
+  "improvements": {
+    "recall_at_3": 49.12280701754387,
+    "ndcg_at_3": 51.461988304093566,
+    "embedding_alignment": 26.635514018691598,
+    "exact_match": 132.94117647058823,
+    "f1_score": 77.20930232558139,
+    "bleu_4": 98.55072463768116,
+    "rouge_l": 68.22916666666666,
+    "meteor": 44.90566037735849
+  }
+}

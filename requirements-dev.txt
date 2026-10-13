@@ -1,0 +1,6 @@
+# Dependencies needed only to run the test suite, not the system itself.
+#
+# Kept separate from requirements.txt so that a deployment install does not
+# pull a test framework. tools/check_integrity.py reads both files, so a test
+# import missing from here is still reported.
+pytest>=7.0.0
