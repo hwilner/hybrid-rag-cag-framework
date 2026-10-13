@@ -22,10 +22,12 @@ They are kept here, unmodified, for two reasons:
 
 ## Running them
 
-They will not run by accident:
+They will not run by accident. Note that all three import `torch` at module scope, so in an
+environment without torch they die at import — also safe, just less informative. With torch
+installed you reach the real guard:
 
 ```bash
-$ python expert_evaluation.py
+$ python retracted/expert_evaluation.py
 REFUSING TO RUN: the 'human expert' responses in this script are
 hardcoded strings in this file. No human study took place.
 ```
