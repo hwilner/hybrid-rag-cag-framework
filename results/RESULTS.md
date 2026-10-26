@@ -212,8 +212,12 @@ Reproduce with:
 python src/real_ablation.py --branch <name> --out results/ablation_<name>.json
 ```
 
-**Setup.** Decoding is greedy (`num_beams=1`, `do_sample=False`) for reproducibility. The three
-arms share every component except the one under test:
+**Setup.** The RAG arm is greedy (`num_beams=1`, `do_sample=False`). The CAG and Hybrid arms ask
+for five candidates, which the generator produces with a beam search followed by a
+nucleus-sampling pass (`do_sample=True`, `top_p=0.9`, `temperature=0.7`); the runs recorded
+below were not seeded. See §9.4 — this was found after the fact, and the `decoding` field in
+these artefacts describes only the RAG arm. The three arms share every component except the
+one under test:
 
 - **RAG** — retrieve + rerank, single decode
 - **CAG** — multi-candidate generation, **no retrieval**, contrastive selection
@@ -265,6 +269,10 @@ Two of these branches contain substantial code changes — a rewritten different
 new honest-baselines module, retraction edits across five files. **None of it changed a single
 output.** This benchmark cannot distinguish the branches, which is itself the finding: the
 reported differences between them are smaller than the benchmark's ability to resolve anything.
+
+The Hybrid arm's fourth-decimal wobble has a mechanical explanation, found later and recorded
+in §9.4: that arm samples, and the runs were not seeded. RAG and CAG are bit-identical because
+the candidates that win their selection happen to be the deterministic ones.
 
 ### 6.4 Hybrid does not beat RAG
 
@@ -452,8 +460,15 @@ python src/real_ablation.py --branch main --out results/ablation_main.json
 python tools/check_integrity.py
 
 # Loss regression tests (needs requirements-dev.txt, plus torch/transformers)
+# The torch-dependent module is skipped at collection time when torch is
+# absent, so this command works in a light environment too.
 pytest tests/ -q
 ```
+
+The three scripts that measure the pipeline — `src/real_ablation.py`,
+`src/ceiling_test.py` and `src/diagnose_failures.py` — locate the benchmark
+through `src/dataset_loader.py` and default to the checkout they live in, so
+each of the commands above runs from a clean clone with no environment setup.
 
 ### 9.1 What was executed for this revision, and what it produced
 
@@ -471,6 +486,28 @@ container with **no** scikit-learn, no scipy, and no torch installed.
 
 This revision therefore adds **no** new scientific result and changes no number
 in §1–§8. It repairs the machinery those numbers come from.
+
+#### 9.1.1 Re-execution on 2026-10-26
+
+Run in a container with numpy, scipy, scikit-learn, nltk, pytest and torch 2.5.1 (CPU) but
+**no** transformers, sentence-transformers or faiss, so the torch-dependent modules could not
+be imported.
+
+| Command | Outcome |
+|---|---|
+| `python src/run_honest_evaluation.py --output <scratch>` | Completed. Reproduced the §2 table exactly — F1 0.177143 / EM 0.000000 / containment 0.309091 for both TF-IDF and BM25, and 0.187184 / 0.000000 / 0.381818 for the oracle ceiling. All 110 per-question predictions byte-identical to the committed `results/verified_tier2.json`. The output differed from the committed file in three lines: two `wallclock_sec` timings, and `n_nonzero_diffs`. |
+| `python src/ceiling_test.py --output <scratch>` | Completed. Reproduced the §8 table exactly — retrieval-only F1 0.1902 / containment 0.3636, extractive-span F1 0.2277 / containment 0.2364, oracle-span 1.0000, and the Hybrid row 0.1821 / 0.2727 — and the output file was **byte-identical** to the committed `results/ceiling.json`. This script could not run at all before this revision (§9.3, item 1). |
+| `python tools/check_integrity.py` | 5/5 checks pass — the three from the previous revision, plus `decoding` and `json`. |
+| `pytest tests/ -q` | 60 passed, 0 skipped. |
+| `pytest tests/ -q` against the **pre-revision** sources | **12 failed**, 32 passed, 1 skipped. Each failure is one of the defects in §9.3. |
+| `python tools/check_integrity.py` against the **pre-revision** sources | **2 of 5 checks failed**: `decoding` and `json`. |
+| `python src/real_ablation.py --branch main ...` | **Not run** — needs torch, transformers, a sentence-transformers checkpoint and a BART-large checkpoint, and hours of compute. The provenance and decoding changes in §9.4 are therefore verified by reading the code, by driving the real `generate_candidates` with a tiny BART, and by the committed artefacts, but not by a fresh ablation run. |
+| `python src/diagnose_failures.py` | **Not run** — it needs the same retriever checkpoint as the ceiling test, and a full pass over the corpus. Its dataset-loading defect is verified directly (§9.3, item 1). |
+| `python src/diagnose_generator.py` | **Not run** — imports torch at module scope and is unchanged by this revision. |
+
+This revision adds **no** new scientific result and changes no number in §1–§8. It repairs
+machinery those numbers come from, and adds the checks that would have caught the defects it
+fixes.
 
 ### 9.2 Two defects that made the command above unusable, found by running it
 
@@ -494,18 +531,110 @@ in the output JSON, and refuses a mismatched label.
 
 ### 9.3 Not fixed here, and still true
 
-- `results/verified_tier2.json` contains a bare `NaN`
+* `results/verified_tier2.json` contains a bare `NaN`
   (`comparisons.BM25_vs_TFIDF_F1.n_nonzero_diffs`), which is not valid JSON per
   RFC 8259 and is emitted whenever scipy is absent. The committed file therefore
   does not parse under a strict reader. Regenerating it would rewrite a results
   artefact, which is out of scope for a code fix; the generator is left alone so
   the defect stays visible rather than being papered over.
-- `compute_bleu` and `compute_meteor` in `src/hybrid_rag_cag_system.py` catch
+* `compute_bleu` and `compute_meteor` in `src/hybrid_rag_cag_system.py` catch
   bare `except:` and return `0.0`, so a missing NLTK corpus would silently
   report BLEU-4 and METEOR as `0.000` for every example. Unchanged: the module
   needs torch to import, so no test of the change could be run here.
-- `tests/test_loss_differentiable.py` is not exercised in CI. It needs torch,
+* `tests/test_loss_differentiable.py` is not exercised in CI. It needs torch,
   transformers and a tokenizer download.
+
+**Status as of 2026-10-26.** All three are fixed. The previous revision could not fix
+them; the reasons it gave were each a statement about the tooling available at the time, and
+that tooling has since been put in place.
+
+0. **Three documented commands could not run at all — fixed.** `src/real_ablation.py`,
+   `src/ceiling_test.py` and `src/diagnose_failures.py` each carried a copy of a loader that
+   reached into `src/option3_full_scale_evaluation.py` — a file quarantined under
+   `retracted/` on 2026-10-13 — and each died with a `FileNotFoundError` before doing any
+   work. Two of the three also defaulted to a hard-coded `/workspace/branches/main`, which
+   exists in no clone. The benchmark is now located in one place, `src/dataset_loader.py`.
+   `src/ceiling_test.py` now runs to completion and reproduces the committed
+   `results/ceiling.json` byte-for-byte.
+1. **The bare `NaN` — fixed.** Two separate faults were behind it. The writer emitted
+   `NaN` where RFC 8259 has no literal, and the *value* was wrong in a way that mattered:
+   the count of non-zero paired differences does not depend on scipy and was exactly
+   determinate, so reporting it as `NaN` discarded a known number. `wilcoxon()` now always
+   reports the true count, the writer replaces any non-finite float with `null`, and
+   `json.dump(..., allow_nan=False)` makes a regression an error rather than a silently
+   invalid file. `results/verified_tier2.json` was regenerated: every measurement in it is
+   byte-identical to the committed file, and the only differences are two `wallclock_sec`
+   timings and `n_nonzero_diffs`, which is now `0`. A new integrity check (`json`) fails if
+   any artefact under `results/` stops parsing under a strict reader.
+2. **The bare `except:` — fixed.** The metrics moved to `src/generation_metrics.py`, where
+   an unavailable metric raises `MetricUnavailable` instead of returning `0.0`, and
+   `MetricsCalculator.calculate_all_metrics` reports such a metric as `null` with the reason
+   attached — so "not computed" and "scored zero" are different facts in the output. The
+   import-time `nltk.download('punkt', quiet=True)` is gone: it made importing the module a
+   network operation, hid the failure when there was no network, and since NLTK 3.8.2 did
+   not even fetch what the tokenizer asked for (`punkt_tab`, not `punkt`). The metrics now
+   fetch what they need when they need it, and say so when they cannot.
+3. **The suite not in CI — fixed.** `tests/conftest.py` skips the torch-dependent module at
+   *collection* time when torch is absent, so `pytest tests/ -q` — the command the README
+   already documents — works in a light environment instead of failing to collect. CI now
+   installs pytest and runs the suite. The heavy module still needs torch, transformers and
+   a tokenizer download; that remains a separate, heavier job, and the workflow says so.
+
+### 9.4 The ablation's decoding provenance was wrong for two of three arms
+
+**Found 2026-10-26. This is a finding about the machinery, not a new measurement.**
+
+Every ablation artefact in `results/ablation/` records the decoding configuration as a
+hand-written string:
+
+```json
+"decoding": "greedy, num_beams=1, do_sample=False"
+```
+
+That string is false for the CAG and Hybrid arms. `HybridGenerator.generate_candidates`
+produces a panel of `num_candidates` answers in up to two passes: a beam-search pass, and —
+when the beam pass did not already fill the panel — a nucleus-sampling pass with
+`do_sample=True`, `top_p=0.9` and `temperature=0.7`. The RAG arm asks for one candidate and
+is genuinely greedy. The CAG and Hybrid arms ask for five, so both of them sample. Nothing
+seeded the sampling, so neither of those two arms was reproducible.
+
+The committed artefacts carry the evidence. Comparing the per-question predictions of the
+four branch runs against `main`:
+
+| Arm | Predictions differing from `main` (of 55) |
+|---|---|
+| RAG | 0, 0, 0 |
+| CAG | 0, 0, 0 |
+| Hybrid | 5, 5, 4 |
+
+Under the recorded "greedy" description, all three arms would have been bit-identical. The
+Hybrid arm is not, because it samples. RAG and CAG are bit-identical here because the
+candidates that win their selection happen to be the deterministic ones — which is luck, not
+a guarantee.
+
+**What changed.** The decoding configuration now lives in one place, `src/decoding_policy.py`.
+`HybridGenerator` *executes* that policy and the ablation harness *records* it, so the
+description in a results file cannot drift away from the code that produced the numbers; an
+integrity check (`decoding`) fails if the generator ever passes a decoding parameter as a
+literal again. The harness also seeds the random number generator, deriving the seed for each
+question from the question text, so a run is reproducible and a run resumed from a checkpoint
+reproduces a fresh one. The false `decoding` string has been replaced by a per-arm,
+code-derived description.
+
+The refactor was checked against the code it replaced by driving the real
+`HybridGenerator.generate_candidates` with a tiny randomly-initialised BART and recording the
+keyword arguments of every `model.generate` call. The one-candidate panel makes one call
+(`num_beams=1, num_return_sequences=1, do_sample=False`); the five-candidate panel makes two
+— the beam pass and a sampling pass (`do_sample=True, top_p=0.9, temperature=0.7`) — exactly as
+before. The candidates produced under three fixed seeds were **identical** before and after the
+change, so the measurement did not move.
+
+**What this does not cover.** The ablation was not re-run: it needs torch, transformers, a
+sentence-transformers checkpoint, a BART-large checkpoint and hours of compute, none of which
+were available. The numbers in §6.2 and §6.4 are therefore the record of the 2026-09-22 to
+2026-09-30 runs, produced before the seed existed. A re-run under the current code will not
+necessarily reproduce them exactly, and the committed artefacts keep the description they were
+written with. No number in §1–§8 was changed by this revision.
 
 ## 10. Still not fixed
 

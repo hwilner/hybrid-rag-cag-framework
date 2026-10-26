@@ -26,7 +26,7 @@ raise in an environment that happens to be provisioned correctly.
 
 What this does
 --------------
-Three checks, chosen because each one is cheap enough to run on every push and
+Five checks, chosen because each one is cheap enough to run on every push and
 each one can actually fail:
 
 * ``deps``       -- every third-party module imported anywhere under ``src/``
@@ -37,6 +37,13 @@ each one can actually fail:
 * ``provenance`` -- ``git_provenance`` must report the checkout it is given,
                     and the branch-label check must reject a mismatch rather
                     than writing a mislabelled results file.
+* ``decoding``   -- the decoding configuration must have one source of truth:
+                    the policy must describe the panels the harness asks for
+                    correctly, and the generator must not pass a decoding
+                    parameter as a literal.
+* ``json``       -- every artefact under ``results/`` must parse under a
+                    strict JSON reader. RFC 8259 has no literal for NaN or
+                    Infinity, and Python's ``json`` module writes them anyway.
 
 Run with::
 
@@ -55,6 +62,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import json
 import os
 import subprocess
 import sys
@@ -323,6 +331,213 @@ def check_provenance() -> List[str]:
 
 
 # --------------------------------------------------------------------------- #
+# Check 4: decoding configuration
+# --------------------------------------------------------------------------- #
+
+#: The decoding parameters that must come from the shared policy rather than
+#: from a literal in the generator.
+DECODING_KEYWORDS = frozenset(
+    {
+        "num_beams",
+        "num_return_sequences",
+        "do_sample",
+        "early_stopping",
+        "top_p",
+        "temperature",
+    }
+)
+
+
+def check_decoding() -> List[str]:
+    """The decoding configuration must have exactly one source of truth.
+
+    Two halves to this check, because either alone would be too weak.
+
+    The first is behavioural: the policy in ``src/decoding_policy.py`` must
+    describe the two panels the ablation harness asks for the way the code
+    actually decodes them. A single-candidate panel is greedy; a five-candidate
+    panel is a beam search followed by a nucleus-sampling pass, and is
+    therefore stochastic. This is the distinction the results file used to
+    get wrong: it recorded "greedy, num_beams=1, do_sample=False" for all
+    three arms, when two of them sampled.
+
+    The second is structural: ``HybridGenerator.generate_candidates`` must not
+    pass a decoding parameter as a literal. If it did, the policy would
+    describe a configuration the generator does not use, and the two could
+    drift apart again -- which is exactly the defect this check guards.
+    """
+    failures: List[str] = []
+
+    sys.path.insert(0, SRC_DIR)
+    try:
+        from decoding_policy import DecodingPolicy
+    except ImportError as exc:  # pragma: no cover - reported as a failure
+        return [f"could not import decoding_policy: {exc}"]
+
+    # A one-candidate panel is decoded greedily.
+    single = DecodingPolicy(num_candidates=1)
+    if not single.is_deterministic():
+        failures.append(
+            "a one-candidate panel is not deterministic; the RAG arm is "
+            "documented as greedy"
+        )
+    for decoding_pass in single.passes():
+        if decoding_pass.do_sample:
+            failures.append("a one-candidate panel runs a sampling pass")
+        if decoding_pass.num_beams != 1:
+            failures.append(
+                f"a one-candidate panel uses num_beams={decoding_pass.num_beams}, "
+                "expected 1"
+            )
+
+    # A five-candidate panel samples, and says so.
+    panel = DecodingPolicy(num_candidates=5)
+    if panel.is_deterministic():
+        failures.append(
+            "a five-candidate panel is reported as deterministic, but it runs "
+            "a nucleus-sampling pass"
+        )
+    passes = panel.passes()
+    if len(passes) != 2:
+        failures.append(
+            f"a five-candidate panel runs {len(passes)} decoding passes, "
+            "expected 2 (beam search, then nucleus sampling)"
+        )
+    if not any(decoding_pass.do_sample for decoding_pass in passes):
+        failures.append("a five-candidate panel runs no sampling pass")
+    described = panel.describe()
+    if "do_sample=True" not in described:
+        failures.append(
+            f"the description of a five-candidate panel does not mention "
+            f"sampling: {described!r}"
+        )
+    if "do_sample=False" not in described:
+        failures.append(
+            f"the description of a five-candidate panel does not mention the "
+            f"deterministic pass: {described!r}"
+        )
+
+    # A panel of zero candidates is not a thing.
+    try:
+        DecodingPolicy(num_candidates=0)
+    except ValueError:
+        pass
+    else:
+        failures.append("a zero-candidate panel was accepted")
+
+    # Structural half: no literal decoding parameters in the generator.
+    failures.extend(_check_generator_uses_policy())
+    return failures
+
+
+def _check_generator_uses_policy() -> List[str]:
+    """The generator must not pass decoding parameters as literals."""
+    path = os.path.join(SRC_DIR, "hybrid_rag_cag_system.py")
+    if not os.path.exists(path):
+        return [f"{path!r} does not exist; cannot check the decoding policy"]
+
+    with open(path, encoding="utf-8") as handle:
+        tree = ast.parse(handle.read(), filename=path)
+
+    failures: List[str] = []
+    found = False
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        if node.name != "generate_candidates":
+            continue
+        found = True
+        generate_calls = [
+            call
+            for call in ast.walk(node)
+            if isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Attribute)
+            and call.func.attr == "generate"
+        ]
+        if not generate_calls:
+            failures.append(
+                "generate_candidates makes no call to model.generate(); the "
+                "candidates would no longer come from the model"
+            )
+        for call in generate_calls:
+            literal_keywords = sorted(
+                keyword.arg
+                for keyword in call.keywords
+                if keyword.arg in DECODING_KEYWORDS
+            )
+            if literal_keywords:
+                failures.append(
+                    "generate_candidates passes the decoding parameter(s) "
+                    f"{', '.join(literal_keywords)} as a literal; they must come "
+                    "from DecodingPolicy so that the recorded description and "
+                    "the code cannot drift apart"
+                )
+        # The policy has to be consulted somewhere in the function.
+        uses_policy = any(
+            isinstance(call, ast.Call)
+            and isinstance(call.func, ast.Attribute)
+            and call.func.attr == "passes"
+            for call in ast.walk(node)
+        )
+        if not uses_policy:
+            failures.append(
+                "generate_candidates never consults the decoding policy; the "
+                "decoding parameters must come from DecodingPolicy.passes()"
+            )
+
+    if not found:
+        failures.append(
+            f"{path!r} has no generate_candidates function; the decoding "
+            "policy is not being used"
+        )
+    return failures
+
+
+# --------------------------------------------------------------------------- #
+# Check 5: results artefacts are valid JSON
+# --------------------------------------------------------------------------- #
+
+def check_results_json() -> List[str]:
+    """Every results artefact must parse under a strict JSON reader.
+
+    RFC 8259 has no literal for NaN or Infinity. Python's ``json`` module
+    writes them anyway, and a file containing one does not parse under a
+    strict reader -- which is how ``results/verified_tier2.json`` came to
+    contain a bare ``NaN`` for a value that was exactly determinate.
+
+    The quarantined outputs under ``retracted/`` are excluded: they are
+    archived evidence of what was retracted, kept byte-for-byte as they were.
+    """
+    results_dir = os.path.join(REPO_ROOT, "results")
+    if not os.path.isdir(results_dir):
+        return [f"{results_dir!r} does not exist; no results to check"]
+
+    def reject(constant: str):
+        raise ValueError(f"bare {constant} is not valid JSON per RFC 8259")
+
+    failures: List[str] = []
+    checked = 0
+    for directory, _, filenames in os.walk(results_dir):
+        for filename in sorted(filenames):
+            if not filename.endswith(".json"):
+                continue
+            path = os.path.join(directory, filename)
+            relative = os.path.relpath(path, REPO_ROOT)
+            checked += 1
+            try:
+                with open(path, encoding="utf-8") as handle:
+                    json.load(handle, parse_constant=reject)
+            except ValueError as exc:
+                failures.append(f"{relative} is not valid JSON: {exc}")
+            except OSError as exc:
+                failures.append(f"{relative} could not be read: {exc}")
+
+    if not checked:
+        failures.append(f"no JSON files found under {results_dir!r}")
+    return failures
+
+
+# --------------------------------------------------------------------------- #
 # Runner
 # --------------------------------------------------------------------------- #
 
@@ -330,6 +545,8 @@ CHECKS = {
     "deps": ("requirements.txt covers every third-party import", check_deps),
     "tfidf": ("pure-numpy retrieval path ranks instead of raising", check_tfidf),
     "provenance": ("ablation results carry verifiable branch provenance", check_provenance),
+    "decoding": ("the decoding configuration has one source of truth", check_decoding),
+    "json": ("results artefacts are valid JSON", check_results_json),
 }
 
 

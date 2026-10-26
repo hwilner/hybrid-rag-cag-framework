@@ -22,8 +22,19 @@ all). The branch is passed via ``HYBRID_BRANCH_DIR`` and imported from there.
 
 Determinism
 -----------
-BART decoding here is greedy (``num_beams=1``, ``do_sample=False``), so results
-are reproducible. Wall-clock is recorded but never used for any claim.
+The RAG arm asks for a single candidate, which is decoded greedily
+(``num_beams=1``, ``do_sample=False``). The CAG and Hybrid arms ask for five
+candidates, which the generator produces with a beam search *and* a
+nucleus-sampling pass (``do_sample=True``), so those two arms are stochastic
+by construction. The seed is derived from the question text, so a run is
+reproducible and a run resumed from a checkpoint reproduces a fresh one.
+
+The decoding configuration written to the output JSON is read back from the
+code under test (``decoding_description``) rather than written by hand. It
+used to be the hard-coded string ``"greedy, num_beams=1, do_sample=False"``,
+which was false for two of the three arms.
+
+Wall-clock is recorded but never used for any claim.
 
 Provenance
 ----------
@@ -45,7 +56,9 @@ from __future__ import annotations
 
 import argparse
 import gc
+import hashlib
 import importlib
+import importlib.util
 import json
 import os
 import re
@@ -59,7 +72,8 @@ from typing import Dict, List, Optional, Sequence
 # The checkout this script itself lives in. Used as the default evaluation
 # target so that a plain `python src/real_ablation.py --branch main ...` works
 # without the caller first exporting HYBRID_BRANCH_DIR by hand.
-SELF_CHECKOUT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SELF_SRC = os.path.dirname(os.path.abspath(__file__))
+SELF_CHECKOUT = os.path.dirname(SELF_SRC)
 
 BRANCH_DIR = os.environ.get("HYBRID_BRANCH_DIR") or SELF_CHECKOUT
 if not os.path.isdir(BRANCH_DIR):
@@ -70,6 +84,16 @@ if not os.path.isdir(BRANCH_DIR):
     )
 sys.path.insert(0, os.path.join(BRANCH_DIR, "src"))
 sys.path.insert(0, BRANCH_DIR)
+
+# The dataset loader is harness code, not code under test, so it is imported
+# by explicit path. BRANCH_DIR/src sits ahead of this checkout's src on
+# sys.path and would otherwise shadow it, and the loader has to be the same
+# code whichever branch is being evaluated.
+_LOADER_SPEC = importlib.util.spec_from_file_location(
+    "dataset_loader", os.path.join(SELF_SRC, "dataset_loader.py")
+)
+dataset_loader = importlib.util.module_from_spec(_LOADER_SPEC)
+_LOADER_SPEC.loader.exec_module(dataset_loader)
 
 
 def git_provenance(path: str) -> Dict[str, Optional[str]]:
@@ -156,30 +180,16 @@ def contains(pred: str, gold: str) -> float:
 # --------------------------------------------------------------------------- #
 
 def load_dataset():
-    """Pull the Tier-2 corpus/questions without importing the branch's torch deps."""
-    import ast
+    """Pull the Tier-2 corpus/questions without importing the branch's torch deps.
 
-    path = os.path.join(BRANCH_DIR, "src", "option3_full_scale_evaluation.py")
-    with open(path) as fh:
-        tree = ast.parse(fh.read())
-    for node in tree.body:
-        if isinstance(node, ast.FunctionDef) and node.name == "create_large_scale_dataset":
-            import collections
-            import datetime
-            import logging
-
-            import numpy as np
-
-            ns = {
-                "np": np,
-                "logger": logging.getLogger("ds"),
-                "defaultdict": collections.defaultdict,
-                "Counter": collections.Counter,
-                "datetime": datetime.datetime,
-            }
-            exec(compile(ast.Module(body=[node], type_ignores=[]), path, "exec"), ns)
-            return ns["create_large_scale_dataset"]()
-    raise SystemExit("could not locate create_large_scale_dataset")
+    The loader lives in ``src/dataset_loader.py`` and is shared by every script
+    that needs this benchmark. It used to be a copy of the AST-extraction
+    below, which pointed at ``src/option3_full_scale_evaluation.py`` -- a file
+    that was quarantined under ``retracted/`` on 2026-10-13. Every script that
+    carried a copy of that loader therefore died with a ``FileNotFoundError``
+    before doing any work.
+    """
+    return dataset_loader.load_tier2_dataset(BRANCH_DIR, fallback_dir=SELF_CHECKOUT)
 
 
 # --------------------------------------------------------------------------- #
@@ -311,6 +321,40 @@ def arm_hybrid(sys_, corpus, questions, max_gen_tokens, cfg):
 
 ARMS = {"RAG": arm_rag, "CAG": arm_cag, "Hybrid": arm_hybrid}
 
+# How many candidate answers each arm asks the generator for. This is the
+# input that decides the decoding configuration, so it is recorded explicitly
+# rather than inferred from the arm functions.
+ARM_NUM_CANDIDATES = {"RAG": 1, "CAG": 5, "Hybrid": 5}
+
+
+def arm_decoding(gen, num_candidates: int) -> str:
+    """Return the decoding configuration the generator will use for an arm.
+
+    The description is asked of the code under test rather than written here,
+    so the string recorded in the results file describes the run that
+    happened. A branch that does not expose the description gets an explicit
+    "unknown" rather than a guess -- an unverified guess is exactly the kind
+    of provenance this repository rejects.
+    """
+    describe = getattr(gen, "decoding_description", None)
+    if describe is None:
+        return "unknown: this branch does not expose its decoding configuration"
+    return describe(num_candidates)
+
+
+def question_seed(base_seed: int, arm: str, question: str) -> int:
+    """Return the random seed to use for one question of one arm.
+
+    The seed is derived from the question text rather than drawn from a
+    running random stream, so a run resumed from a checkpoint reproduces a
+    fresh run exactly: a question's seed does not depend on how many
+    questions were answered before it.
+    """
+    digest = hashlib.sha256(
+        f"{base_seed}\0{arm}\0{question}".encode("utf-8")
+    ).digest()
+    return int.from_bytes(digest[:4], "big")
+
 
 # --------------------------------------------------------------------------- #
 
@@ -331,6 +375,12 @@ def main():
         help="Write the results even if --branch disagrees with the checkout "
              "being evaluated. The mismatch is recorded in the output JSON as "
              "branch_label_verified=false.",
+    )
+    ap.add_argument(
+        "--seed", type=int, default=0,
+        help="Base seed for the random number generator. The seed used for a "
+             "given question is derived from this value, the arm name and the "
+             "question text, so a resumed run reproduces a fresh one.",
     )
     args = ap.parse_args()
 
@@ -383,12 +433,27 @@ def main():
             "retriever": "sentence-transformers/all-mpnet-base-v2",
             "generator": "facebook/bart-large",
         },
-        "decoding": "greedy, num_beams=1, do_sample=False",
+        "decoding": {},
+        "seed": args.seed,
         "arms": ckpt.get("arms", {}),
     }
 
     sys_, cfg = build_real_system()
     print(f"[{args.branch}] real models loaded", flush=True)
+
+    # Record the decoding configuration each arm will use, asked of the code
+    # under test rather than written by hand. The string that used to be
+    # hard-coded here claimed every arm was greedy, which was false for the
+    # two arms that ask for a five-candidate panel.
+    gen = _comp(sys_, "generator")
+    results["decoding"] = {
+        arm: arm_decoding(gen, num_candidates)
+        for arm, num_candidates in ARM_NUM_CANDIDATES.items()
+    }
+    for arm, description in results["decoding"].items():
+        print(f"[{args.branch}] {arm:7} decoding: {description}", flush=True)
+
+    import torch  # noqa: F401  (the arms generate; torch is needed for seeding)
 
     for name, fn in ARMS.items():
         if name in results["arms"] and \
@@ -413,6 +478,10 @@ def main():
 
         new_rows = []
         for i, item in enumerate(todo, 1):
+            # Seed before every question, from the question text rather than
+            # from a running stream, so that a resumed run reproduces a fresh
+            # run exactly.
+            torch.manual_seed(question_seed(args.seed, name, item["question"]))
             p = fn(sys_, corpus, [item], 48, cfg)[0]
             new_rows.append({
                 "q": item["question"], "gold": item.get("answer", ""), "pred": p,

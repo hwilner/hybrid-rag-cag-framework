@@ -173,6 +173,20 @@ while the machinery producing them was broken:
 | `--branch` validated; a results file can no longer be labelled with a branch it did not measure | `src/real_ablation.py` | mislabelled measurements |
 | Branch-aware reproduction record: what was executed, what was not | `results/RESULTS.md` §9.1 | — |
 
+### 8.1 Changes made on 2026-10-26
+
+A later review found four further defects of the same family — a claim in the
+documentation that the code did not support — and fixed them.
+
+| Change | File | Addresses |
+|---|---|---|
+| The benchmark is located once, in a shared loader; the three scripts that measure the pipeline stopped looking for it in the quarantined script and no longer default to a hard-coded path that exists in no clone | `src/dataset_loader.py` (new), `src/real_ablation.py`, `src/ceiling_test.py`, `src/diagnose_failures.py` | §7, §9 |
+| The decoding configuration has one source of truth: the generator executes it, the harness records it, and a check fails if the two drift apart | `src/decoding_policy.py` (new), `src/hybrid_rag_cag_system.py`, `src/real_ablation.py` | §9 |
+| The random number generator is seeded per question, so a run is reproducible and a resumed run reproduces a fresh one | `src/real_ablation.py` | §9 |
+| An unavailable metric is reported as unavailable, not as a score of zero; the import-time NLTK download is gone | `src/generation_metrics.py` (new), `src/hybrid_rag_cag_system.py` | §9 |
+| The results writer never emits a non-finite number, and a determinate value that was reported as `NaN` is now reported as the number it is | `src/run_honest_evaluation.py`, `results/verified_tier2.json` | §9 |
+| The test suite is collected in a light environment, so `pytest tests/ -q` runs in CI | `tests/conftest.py`, `.github/workflows/integrity.yml` | §9 |
+
 ---
 
 ## 9. Still not fixed
@@ -197,6 +211,23 @@ Recorded so the remaining gaps are not mistaken for oversights:
   a tokenizer download.
 - **The abandoned `improve/real-model` branch** deleted `docs/METHODS.md` — the most honest document
   in the project — and duplicated work. It should be reconciled manually, not merged.
+
+**Status as of 2026-10-26.** The first three are fixed; see §8.1 and `results/RESULTS.md` §9.3.
+The last one still stands: `improve/real-model` is a branch to reconcile by hand, not a change to
+merge.
+
+Two further items were found on 2026-10-26 and are recorded in `results/RESULTS.md` §9.3 and §9.4:
+
+- **Three documented commands could not run at all.** `src/real_ablation.py`,
+  `src/ceiling_test.py` and `src/diagnose_failures.py` each carried a copy of a loader that
+  reached into `src/option3_full_scale_evaluation.py` — a file quarantined under `retracted/` on
+  2026-10-13 — and each died with a `FileNotFoundError` before doing any work. Two of the three
+  also defaulted to a hard-coded `/workspace/branches/main`, which exists in no clone. This is
+  the same failure mode as §7: a documented example that cannot run.
+- **The ablation's decoding provenance was false for two of three arms.** The recorded string
+  `"greedy, num_beams=1, do_sample=False"` did not describe the CAG and Hybrid arms, which
+  sample. The committed artefacts show the consequence: the Hybrid predictions differ on 4-5 of
+  55 questions across the four branch runs, while the RAG and CAG predictions are bit-identical.
 
 ---
 
