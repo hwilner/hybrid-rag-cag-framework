@@ -9,6 +9,8 @@ This implementation fixes the issues in the original code by providing:
 4. Comprehensive evaluation framework
 """
 
+import os
+import sys
 import warnings
 import json
 
@@ -37,6 +39,18 @@ import logging
 import random
 from dataclasses import dataclass
 from sklearn.metrics import ndcg_score
+
+# The modules beside this one are imported as top-level modules, the way
+# `run_honest_evaluation.py` already imports `honest_baselines`. This module
+# is itself loaded both ways -- as `hybrid_rag_cag_system` by the harness
+# scripts and as `src.hybrid_rag_cag_system` by the test suite -- so putting
+# its own directory on the path is what keeps a *single* module object for
+# each sibling, so that a module is never loaded twice under two names.
+_SRC_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SRC_DIR not in sys.path:
+    sys.path.insert(0, _SRC_DIR)
+
+from decoding_policy import DecodingPolicy
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -249,14 +263,34 @@ class HybridGenerator(nn.Module):
         )
         return outputs
     
+    def decoding_policy(self, num_candidates: int) -> DecodingPolicy:
+        """Return the decoding configuration used for a candidate panel.
+
+        Exposed so that a harness can record the configuration that actually
+        ran instead of describing it by hand. See ``src/decoding_policy.py``
+        for why that distinction matters.
+        """
+        return DecodingPolicy(num_candidates=num_candidates)
+
+    def decoding_description(self, num_candidates: int) -> str:
+        """Return a human-readable description of the decoding configuration."""
+        return self.decoding_policy(num_candidates).describe()
+
     def generate_candidates(self, questions: List[str], contexts: List[str], num_candidates: int = 5) -> List[List[str]]:
-        """Generate multiple candidate answers"""
+        """Generate multiple candidate answers.
+
+        The decoding parameters come from :class:`DecodingPolicy` rather than
+        from literals in this method, so the two ``model.generate`` calls and
+        the description a harness records from the same policy cannot drift
+        apart.
+        """
         all_candidates = []
-        
+        policy = self.decoding_policy(num_candidates)
+
         for question, context in zip(questions, contexts):
             # Format input
             input_text = f"question: {question} context: {context}"
-            
+
             # Tokenize
             inputs = self.tokenizer(
                 input_text,
@@ -264,42 +298,25 @@ class HybridGenerator(nn.Module):
                 truncation=True,
                 return_tensors='pt'
             ).to(self.config.device)
-            
-            # Generate candidates with different strategies
+
+            # Generate candidates, one decoding pass at a time. The policy
+            # decides how many passes there are and what each one does: a beam
+            # search, plus a nucleus-sampling pass when the beam search did
+            # not already fill the panel.
             candidates = []
-            
-            # Strategy 1: Beam search
-            beam_outputs = self.model.generate(
-                **inputs,
-                max_length=self.config.max_target_length,
-                num_beams=num_candidates,
-                num_return_sequences=min(num_candidates, 3),
-                early_stopping=True,
-                do_sample=False
-            )
-            
-            for output in beam_outputs:
-                candidate = self.tokenizer.decode(output, skip_special_tokens=True)
-                candidates.append(candidate)
-            
-            # Strategy 2: Nucleus sampling (if we need more candidates)
-            if len(candidates) < num_candidates:
-                remaining = num_candidates - len(candidates)
-                sample_outputs = self.model.generate(
+            for decoding_pass in policy.passes():
+                outputs = self.model.generate(
                     **inputs,
                     max_length=self.config.max_target_length,
-                    do_sample=True,
-                    top_p=0.9,
-                    temperature=0.7,
-                    num_return_sequences=remaining
+                    **decoding_pass.generate_kwargs(),
                 )
-                
-                for output in sample_outputs:
+
+                for output in outputs:
                     candidate = self.tokenizer.decode(output, skip_special_tokens=True)
                     candidates.append(candidate)
-            
+
             all_candidates.append(candidates[:num_candidates])
-        
+
         return all_candidates
     
     def contrastive_selection(self, questions: List[str], contexts: List[str], 
@@ -561,10 +578,10 @@ class HybridRAGCAG(nn.Module):
 # Evaluation utilities
 class MetricsCalculator:
     """Calculate various evaluation metrics"""
-    
+
     def __init__(self):
         self.scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
-        
+
     def calculate_all_metrics(self, predictions: List[str], references: List[str]) -> Dict:
         """Calculate all evaluation metrics"""
         metrics = {
