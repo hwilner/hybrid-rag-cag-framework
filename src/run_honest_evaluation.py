@@ -21,7 +21,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import math
 from collections import Counter
 import os
 import sys
@@ -90,45 +89,16 @@ def paired_bootstrap_ci(diffs, n_boot=10000, seed=0, alpha=0.05):
 
 
 def wilcoxon(diffs):
-    """Two-sided Wilcoxon signed-rank p-value, exact when scipy is available.
-
-    Returns a pair ``(p_value, n_nonzero_diffs)``.
-
-    The p-value is ``None`` when the test does not apply -- fewer than six
-    non-zero differences -- or when scipy is not installed. The count of
-    non-zero differences does not depend on scipy and is always reported: it
-    used to be ``NaN`` in exactly the cases where it was most determinate,
-    which put a bare ``NaN`` into the output file. ``NaN`` is not a valid JSON
-    number (RFC 8259), so the committed artefact did not parse under a strict
-    reader.
-    """
-    d = [x for x in diffs if x != 0]
-    n_nonzero = len(d)
-    if n_nonzero < 6:
-        return None, n_nonzero
+    """Two-sided Wilcoxon signed-rank p-value, exact when scipy is available."""
     try:
         from scipy.stats import wilcoxon
 
-        return float(wilcoxon(d).pvalue), n_nonzero
-    except Exception:  # noqa: BLE001 - scipy missing or failing: no p-value.
-        return None, n_nonzero
-
-
-def json_safe(value):
-    """Return ``value`` with every non-finite float replaced by ``None``.
-
-    RFC 8259 has no literal for NaN or Infinity. Python's ``json`` module
-    writes them anyway, which produces a file that most readers accept and a
-    strict reader rejects. Replacing them with ``null`` keeps the output
-    valid and says "not a number" rather than inventing one.
-    """
-    if isinstance(value, float):
-        return value if math.isfinite(value) else None
-    if isinstance(value, dict):
-        return {key: json_safe(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [json_safe(item) for item in value]
-    return value
+        d = [x for x in diffs if x != 0]
+        if len(d) < 6:
+            return None, float("nan")
+        return wilcoxon(d).pvalue, len(d)
+    except Exception:
+        return None, float("nan")
 
 
 def main() -> None:
@@ -200,12 +170,12 @@ def main() -> None:
     b = per_system["TF-IDF + Extractive"]["F1_scores"]
     diffs = [x - y for x, y in zip(a, b)]
     lo, hi = paired_bootstrap_ci(diffs)
-    p, n_nonzero = wilcoxon(diffs)
+    p, n_eff = wilcoxon(diffs)
     comparisons["BM25_vs_TFIDF_F1"] = {
-        "mean_diff": float(np.mean(diffs)) if diffs else None,
+        "mean_diff": float(np.mean(diffs)),
         "bootstrap_95ci": [lo, hi],
         "wilcoxon_p": p,
-        "n_nonzero_diffs": n_nonzero,
+        "n_nonzero_diffs": n_eff,
         "significant": bool(p is not None and p < 0.05),
         "note": "Negative mean_diff favours TF-IDF.",
     }
@@ -236,13 +206,10 @@ def main() -> None:
     }
 
     os.makedirs(os.path.dirname(args.output), exist_ok=True)
-    # `allow_nan=False` makes a non-finite number an error rather than a bare
-    # `NaN` in the file. The value is sanitised first, so this only fires if
-    # something has reintroduced one.
     with open(args.output, "w") as fh:
-        json.dump(json_safe(out), fh, indent=2, allow_nan=False)
+        json.dump(out, fh, indent=2)
     print(f"\n[write] {args.output}")
-    print(json.dumps(json_safe(comparisons), indent=2))
+    print(json.dumps(comparisons, indent=2))
 
 
 if __name__ == "__main__":

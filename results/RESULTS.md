@@ -489,20 +489,20 @@ in §1–§8. It repairs the machinery those numbers come from.
 
 #### 9.1.1 Re-execution on 2026-10-26
 
-Run in a container with numpy, scipy, scikit-learn, nltk, pytest and torch 2.5.1 (CPU) but
-**no** transformers, sentence-transformers or faiss, so the torch-dependent modules could not
-be imported.
+Run on CPU with numpy, scipy, scikit-learn, nltk, pytest, torch 2.5.1, transformers 4.57.6,
+sentence-transformers 3.4.1 and faiss-cpu 1.15.1.
 
 | Command | Outcome |
 |---|---|
 | `python src/run_honest_evaluation.py --output <scratch>` | Completed. Reproduced the §2 table exactly — F1 0.177143 / EM 0.000000 / containment 0.309091 for both TF-IDF and BM25, and 0.187184 / 0.000000 / 0.381818 for the oracle ceiling. All 110 per-question predictions byte-identical to the committed `results/verified_tier2.json`. The output differed from the committed file in three lines: two `wallclock_sec` timings, and `n_nonzero_diffs`. |
-| `python src/ceiling_test.py --output <scratch>` | Completed. Reproduced the §8 table exactly — retrieval-only F1 0.1902 / containment 0.3636, extractive-span F1 0.2277 / containment 0.2364, oracle-span 1.0000, and the Hybrid row 0.1821 / 0.2727 — and the output file was **byte-identical** to the committed `results/ceiling.json`. This script could not run at all before this revision (§9.3, item 1). |
+| `python src/ceiling_test.py --output <scratch>` | Completed. Reproduced the §8 table exactly — retrieval-only F1 0.1902 / containment 0.3636, extractive-span F1 0.2277 / containment 0.2364, oracle-span 1.0000, and the Hybrid row 0.1821 / 0.2727 — and the output file was **byte-identical** to the committed `results/ceiling.json`. This script could not run at all before this revision (§9.3, item 0). |
 | `python tools/check_integrity.py` | 5/5 checks pass — the three from the previous revision, plus `decoding` and `json`. |
-| `pytest tests/ -q` | 60 passed, 0 skipped. |
-| `pytest tests/ -q` against the **pre-revision** sources | **12 failed**, 32 passed, 1 skipped. Each failure is one of the defects in §9.3. |
+| `pytest tests/ -q` | **60 passed**, 0 skipped. |
+| `pytest tests/ -q` against the **pre-revision** sources | **19 failed**, 41 passed. Every failure is one of the defects in §9.3. |
 | `python tools/check_integrity.py` against the **pre-revision** sources | **2 of 5 checks failed**: `decoding` and `json`. |
-| `python src/real_ablation.py --branch main ...` | **Not run** — needs torch, transformers, a sentence-transformers checkpoint and a BART-large checkpoint, and hours of compute. The provenance and decoding changes in §9.4 are therefore verified by reading the code, by driving the real `generate_candidates` with a tiny BART, and by the committed artefacts, but not by a fresh ablation run. |
-| `python src/diagnose_failures.py` | **Not run** — it needs the same retriever checkpoint as the ceiling test, and a full pass over the corpus. Its dataset-loading defect is verified directly (§9.3, item 1). |
+| The GitHub Actions run on the new `main` (SHA `49fd9d0`) | **success**. The job installs numpy, pytest and nltk only, so the 13 torch-dependent tests are skipped at collection: **47 passed, 1 skipped**. The integrity step logged `all 5 checks passed`, and the smoke test reproduced the §2 numbers. |
+| `python src/real_ablation.py --branch main ...` | **Not run** — needs a BART-large checkpoint and hours of compute. The provenance and decoding changes in §9.4 are therefore verified by driving the real `generate_candidates` with a tiny BART and by the committed artefacts, but not by a fresh ablation run. |
+| `python src/diagnose_failures.py` | **Not run** — it needs the same retriever checkpoint as the ceiling test, and a full pass over the corpus. Its dataset-loading defect is verified directly (§9.3, item 0). |
 | `python src/diagnose_generator.py` | **Not run** — imports torch at module scope and is unchanged by this revision. |
 
 This revision adds **no** new scientific result and changes no number in §1–§8. It repairs

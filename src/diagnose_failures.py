@@ -17,7 +17,6 @@ seconds rather than hours.
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import re
@@ -27,25 +26,9 @@ from collections import Counter, defaultdict
 
 import numpy as np
 
-# The checkout this script lives in. It is the default evaluation target, so
-# that a plain `python src/diagnose_failures.py` works from a clean clone with
-# no environment setup -- the hard-coded path this used to default to
-# ("/workspace/branches/main") does not exist in any clone.
-SELF_SRC = os.path.dirname(os.path.abspath(__file__))
-SELF_CHECKOUT = os.path.dirname(SELF_SRC)
-
-BRANCH_DIR = os.environ.get("HYBRID_BRANCH_DIR") or SELF_CHECKOUT
+BRANCH_DIR = os.environ.get("HYBRID_BRANCH_DIR", "/workspace/branches/main")
 sys.path.insert(0, os.path.join(BRANCH_DIR, "src"))
 sys.path.insert(0, BRANCH_DIR)
-
-# The dataset loader is harness code, not code under test, so it is imported
-# by explicit path. BRANCH_DIR/src sits ahead of this checkout's src on
-# sys.path and would otherwise shadow it.
-_LOADER_SPEC = importlib.util.spec_from_file_location(
-    "dataset_loader", os.path.join(SELF_SRC, "dataset_loader.py")
-)
-dataset_loader = importlib.util.module_from_spec(_LOADER_SPEC)
-_LOADER_SPEC.loader.exec_module(dataset_loader)
 
 
 def normalize(s: str) -> str:
@@ -61,15 +44,21 @@ def contains(pred: str, gold: str) -> float:
 
 
 def load_dataset():
-    """Return the Tier-2 corpus and questions.
+    import ast
+    import collections
+    import datetime
+    import logging
 
-    The loader lives in ``src/dataset_loader.py`` and is shared by every script
-    that needs this benchmark. It used to be a copy of the AST-extraction
-    below, which pointed at ``src/option3_full_scale_evaluation.py`` -- a file
-    that was quarantined under ``retracted/`` on 2026-10-13. This script
-    therefore died with a ``FileNotFoundError`` before doing any work.
-    """
-    return dataset_loader.load_tier2_dataset(BRANCH_DIR, fallback_dir=SELF_CHECKOUT)
+    path = os.path.join(BRANCH_DIR, "src", "option3_full_scale_evaluation.py")
+    tree = ast.parse(open(path).read())
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == "create_large_scale_dataset":
+            ns = {"np": np, "logger": logging.getLogger("d"),
+                  "defaultdict": collections.defaultdict,
+                  "Counter": collections.Counter, "datetime": datetime.datetime}
+            exec(compile(ast.Module(body=[node], type_ignores=[]), path, "exec"), ns)
+            return ns["create_large_scale_dataset"]()
+    raise SystemExit("dataset function not found")
 
 
 def main():
