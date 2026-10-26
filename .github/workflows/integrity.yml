@@ -8,15 +8,16 @@ name: integrity
 # that would label its output with a branch it never measured.
 #
 # Scope, stated plainly rather than implied:
-#   * This job installs numpy ONLY. It exercises the lexical tier, which is
-#     the tier results.md §2-§3 actually report, and it runs the integrity
-#     checks in tools/check_integrity.py.
-#   * It deliberately does NOT run tests/test_loss_differentiable.py. That
-#     suite needs torch, transformers and a facebook/bart-base tokenizer
-#     download; running it here would make a 30-second check into a several-
-#     minute, network-dependent one. It remains run locally with
-#     `pytest tests/`. Adding it is a separate piece of work, not a silent
-#     omission.
+#   * This job installs numpy, pytest and nltk. It exercises the lexical tier,
+#     which is the tier results.md §2-§3 actually report, it runs the light
+#     test suite, and it runs the integrity checks in tools/check_integrity.py.
+#   * It deliberately does NOT run the torch-dependent parts of the suite.
+#     Those need torch, transformers and a tokenizer download; running them
+#     here would make a 30-second check into a several-minute,
+#     network-dependent one. They remain run locally with `pytest tests/` in
+#     an environment that has torch. tests/conftest.py skips them at
+#     collection time when torch is absent, so the command below is the same
+#     command either way.
 on:
   push:
     branches: [main]
@@ -31,14 +32,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
-      - name: Install the lexical tier's only dependency
-        run: python -m pip install --disable-pip-version-check "numpy>=1.21.0"
+      - name: Install the lexical tier's dependencies
+        # numpy for the pure-numpy retrieval path, pytest to run the light
+        # test suite, and nltk so that the metric tests run rather than being
+        # skipped. No corpus download is needed: the metric tests inject a
+        # tokenizer or simulate the missing data explicitly.
+        run: >-
+          python -m pip install --disable-pip-version-check
+          "numpy>=1.21.0" "pytest>=7.0.0" "nltk>=3.6.5"
 
       - name: Byte-compile every source file
         # Catches syntax errors in files the other steps never import, such as
@@ -47,6 +54,12 @@ jobs:
 
       - name: Integrity checks
         run: python tools/check_integrity.py
+
+      - name: Light-tier unit tests
+        # The whole suite is collected. The torch-dependent module is skipped
+        # at collection time when torch is not installed, so this runs every
+        # test that does not need a model checkpoint.
+        run: python -m pytest tests/ -q
 
       - name: Lexical tier smoke test
         # Runs the pipeline behind README "The one command that works" and

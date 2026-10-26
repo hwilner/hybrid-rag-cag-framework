@@ -28,6 +28,7 @@ selection, run end to end on a real 55-question benchmark with real models
 | **Real baselines** | `src/honest_baselines.py` — TF-IDF and Okapi BM25 retrievers, coverage-weighted extractive reader, oracle ceiling |
 | **A real ablation** | `src/real_ablation.py` — three-arm RAG / CAG / Hybrid comparison, all models loaded for real, 55 questions, four branches |
 | **A failure diagnosis** | `src/diagnose_failures.py`, `src/diagnose_generator.py`, `src/ceiling_test.py` |
+| **Checks that can fail** | `tools/check_integrity.py` + `tests/` — five integrity checks and a unit suite, all runnable in CI without a model checkpoint |
 | **The full numbers** | [`results/RESULTS.md`](results/RESULTS.md) — every measurement, every test, and what was *not* run |
 
 ---
@@ -109,6 +110,14 @@ more.** CAG without retrieval is not a viable arm at all — its containment is 
 CAG are **bit-identical** across branches; Hybrid differs only in the fourth decimal. Two of
 those branches contained substantial code changes and changed not one output — the benchmark
 cannot resolve differences of that size, which is itself worth knowing.
+
+*Provenance note (added 2026-10-26):* the CAG and Hybrid arms decode with a nucleus-sampling
+pass that the runs above did not seed, so those two arms are stochastic by construction — the
+RAG arm is greedy. The `decoding` field in the committed ablation artefacts describes only the
+RAG arm, which was wrong. The decoding configuration is now derived from the code and the
+sampling is seeded, so a run is reproducible; the numbers above remain the record of the
+2026-09-22 to 2026-09-30 runs, and they were not re-measured. The full account is in
+[`results/RESULTS.md`](results/RESULTS.md) §9.4.
 
 ### 2. Lexical baselines — CPU-only, sub-second, no network
 
@@ -238,9 +247,13 @@ python src/diagnose_failures.py        # context recall, dead zones, question cl
 python src/diagnose_generator.py       # prompt-echo diagnosis
 python src/ceiling_test.py             # what a fixed reader would unlock
 python src/real_ablation.py --branch main --out results/ablation_main.json
-python tools/check_integrity.py        # dependency-independent checks, 3/3 pass
-pytest tests/ -q                       # loss regression tests (needs torch)
+python tools/check_integrity.py        # dependency-independent checks, 5/5 pass
+pytest tests/ -q                       # unit tests (the torch-dependent part is skipped without torch)
 ```
+
+Each of the three scripts that measure the pipeline finds the benchmark through
+`src/dataset_loader.py` and defaults to the checkout it lives in, so every command above
+runs from a clean clone with no environment setup.
 
 Items requiring torch, a GPU-scale memory budget, or network access are recorded as **NOT RUN**
 in [`results/RESULTS.md`](results/RESULTS.md) rather than estimated.
@@ -289,6 +302,9 @@ hybrid-rag-cag-framework/
 ├── src/
 │   ├── hybrid_rag_cag_system.py        # the system
 │   ├── trainable_losses.py             # real differentiable loss
+│   ├── decoding_policy.py               # the decoding configuration, in one place
+│   ├── generation_metrics.py           # BLEU / METEOR, with "unavailable" ≠ "zero"
+│   ├── dataset_loader.py                # where the benchmark lives
 │   ├── honest_baselines.py             # TF-IDF, BM25, extractive, oracle
 │   ├── real_ablation.py                # 3-arm ablation harness
 │   ├── run_honest_evaluation.py        # lexical baseline runner
@@ -303,7 +319,14 @@ hybrid-rag-cag-framework/
 │   ├── ROADMAP.md · PROJECT.md
 │   ├── TECHNICAL_EVALUATION_NOTES.md
 │   └── figures/
-├── tests/test_loss_differentiable.py
+├── tests/
+│   ├── conftest.py                     # skips the torch-dependent module when torch is absent
+│   ├── test_dataset_loader.py
+│   ├── test_decoding_policy.py
+│   ├── test_generation_metrics.py
+│   ├── test_metrics_calculator.py
+│   ├── test_results_json.py
+│   └── test_loss_differentiable.py
 ├── tools/check_integrity.py
 ├── retracted/                          # quarantined: produced the fabricated numbers
 │   ├── README.md
