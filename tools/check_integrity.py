@@ -26,7 +26,7 @@ raise in an environment that happens to be provisioned correctly.
 
 What this does
 --------------
-Four checks, chosen because each one is cheap enough to run on every push and
+Five checks, chosen because each one is cheap enough to run on every push and
 each one can actually fail:
 
 * ``deps``       -- every third-party module imported anywhere under ``src/``
@@ -41,6 +41,9 @@ each one can actually fail:
                     the policy must describe the panels the harness asks for
                     correctly, and the generator must not pass a decoding
                     parameter as a literal.
+* ``json``       -- every artefact under ``results/`` must parse under a
+                    strict JSON reader. RFC 8259 has no literal for NaN or
+                    Infinity, and Python's ``json`` module writes them anyway.
 
 Run with::
 
@@ -490,7 +493,52 @@ def _check_generator_uses_policy() -> List[str]:
     return failures
 
 
+# --------------------------------------------------------------------------- #
+# Check 5: results artefacts are valid JSON
+# --------------------------------------------------------------------------- #
 
+def check_results_json() -> List[str]:
+    """Every results artefact must parse under a strict JSON reader.
+
+    RFC 8259 has no literal for NaN or Infinity. Python's ``json`` module
+    writes them anyway, and a file containing one does not parse under a
+    strict reader -- which is how ``results/verified_tier2.json`` came to
+    contain a bare ``NaN`` for a value that was exactly determinate.
+
+    The quarantined outputs under ``retracted/`` are excluded: they are
+    archived evidence of what was retracted, kept byte-for-byte as they were.
+    """
+    results_dir = os.path.join(REPO_ROOT, "results")
+    if not os.path.isdir(results_dir):
+        return [f"{results_dir!r} does not exist; no results to check"]
+
+    def reject(constant: str):
+        raise ValueError(f"bare {constant} is not valid JSON per RFC 8259")
+
+    failures: List[str] = []
+    checked = 0
+    for directory, _, filenames in os.walk(results_dir):
+        for filename in sorted(filenames):
+            if not filename.endswith(".json"):
+                continue
+            path = os.path.join(directory, filename)
+            relative = os.path.relpath(path, REPO_ROOT)
+            checked += 1
+            try:
+                with open(path, encoding="utf-8") as handle:
+                    json.load(handle, parse_constant=reject)
+            except ValueError as exc:
+                failures.append(f"{relative} is not valid JSON: {exc}")
+            except OSError as exc:
+                failures.append(f"{relative} could not be read: {exc}")
+
+    if not checked:
+        failures.append(f"no JSON files found under {results_dir!r}")
+    return failures
+
+
+# --------------------------------------------------------------------------- #
+# Runner
 # --------------------------------------------------------------------------- #
 
 CHECKS = {
@@ -498,6 +546,7 @@ CHECKS = {
     "tfidf": ("pure-numpy retrieval path ranks instead of raising", check_tfidf),
     "provenance": ("ablation results carry verifiable branch provenance", check_provenance),
     "decoding": ("the decoding configuration has one source of truth", check_decoding),
+    "json": ("results artefacts are valid JSON", check_results_json),
 }
 
 

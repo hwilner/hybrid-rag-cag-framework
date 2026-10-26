@@ -28,10 +28,7 @@ from transformers import (
     BartForConditionalGeneration, BartTokenizer,
     AutoTokenizer, AutoModel
 )
-import nltk
-from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from rouge_score import rouge_scorer
-from nltk.translate.meteor_score import meteor_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 from typing import List, Dict, Tuple, Optional
@@ -45,20 +42,26 @@ from sklearn.metrics import ndcg_score
 # is itself loaded both ways -- as `hybrid_rag_cag_system` by the harness
 # scripts and as `src.hybrid_rag_cag_system` by the test suite -- so putting
 # its own directory on the path is what keeps a *single* module object for
-# each sibling, so that a module is never loaded twice under two names.
+# each sibling. Two copies would mean two `MetricUnavailable` classes, and an
+# exception raised by one would not be caught by the other.
 _SRC_DIR = os.path.dirname(os.path.abspath(__file__))
 if _SRC_DIR not in sys.path:
     sys.path.insert(0, _SRC_DIR)
 
 from decoding_policy import DecodingPolicy
+from generation_metrics import MetricUnavailable, compute_bleu, compute_meteor
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Download NLTK data
-nltk.download('punkt', quiet=True)
-nltk.download('wordnet', quiet=True)
+# The NLTK data that BLEU and METEOR need is *not* downloaded here. It used to
+# be, with `nltk.download('punkt', quiet=True)`, which made importing this
+# module a network operation, hid the failure when there was no network, and
+# -- since NLTK 3.8.2, whose tokenizer needs `punkt_tab` rather than `punkt`
+# -- did not even fetch what the tokenizer asked for. The metric helpers in
+# src/generation_metrics.py now fetch what they need when they need it, and
+# report the metric as unavailable when they cannot.
 
 @dataclass
 class HybridConfig:
@@ -583,7 +586,27 @@ class MetricsCalculator:
         self.scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
 
     def calculate_all_metrics(self, predictions: List[str], references: List[str]) -> Dict:
-        """Calculate all evaluation metrics"""
+        """Calculate all evaluation metrics.
+
+        A metric that cannot be computed is reported as ``None``, never as
+        ``0.0``. The BLEU and METEOR helpers used to catch every failure and
+        return ``0.0``, so a missing NLTK corpus made both metrics report
+        ``0.000`` for every example -- a number indistinguishable from a
+        genuine score of zero. The reason is reported alongside the metrics in
+        the ``unavailable_metrics`` key.
+
+        Raises:
+            ValueError: if ``predictions`` and ``references`` have different
+                lengths. Scoring the shorter list silently would report a
+                mean over fewer examples than the caller supplied, with
+                nothing in the output to say so.
+        """
+        if len(predictions) != len(references):
+            raise ValueError(
+                f"predictions and references must be the same length, got "
+                f"{len(predictions)} and {len(references)}"
+            )
+
         metrics = {
             'exact_match': [],
             'f1': [],
@@ -591,71 +614,87 @@ class MetricsCalculator:
             'rouge_l': [],
             'meteor': []
         }
-        
+        # Metric name -> why it could not be computed.
+        unavailable: Dict[str, str] = {}
+
         for pred, ref in zip(predictions, references):
             # Exact Match
             em = float(pred.lower().strip() == ref.lower().strip())
             metrics['exact_match'].append(em)
-            
+
             # F1 Score
             f1 = self.compute_f1(pred, ref)
             metrics['f1'].append(f1)
-            
+
             # BLEU-4
-            bleu = self.compute_bleu(pred, ref)
-            metrics['bleu4'].append(bleu)
-            
+            metrics['bleu4'].append(self._optional_metric('bleu4', self.compute_bleu, pred, ref, unavailable))
+
             # ROUGE-L
             rouge = self.scorer.score(ref, pred)['rougeL'].fmeasure
             metrics['rouge_l'].append(rouge)
-            
+
             # METEOR
-            meteor = self.compute_meteor(pred, ref)
-            metrics['meteor'].append(meteor)
-        
-        # Average all metrics
-        return {k: np.mean(v) for k, v in metrics.items()}
-    
+            metrics['meteor'].append(self._optional_metric('meteor', self.compute_meteor, pred, ref, unavailable))
+
+        # Average all metrics. A metric with no computed value is None rather
+        # than NaN: NaN is not a valid JSON number and reads as a measurement.
+        averaged: Dict[str, object] = {}
+        for key, values in metrics.items():
+            computed = [v for v in values if v is not None]
+            averaged[key] = float(np.mean(computed)) if computed else None
+        if unavailable:
+            averaged['unavailable_metrics'] = unavailable
+        return averaged
+
+    @staticmethod
+    def _optional_metric(name, func, pred: str, ref: str, unavailable: Dict[str, str]):
+        """Call ``func``, recording the reason if the metric is unavailable."""
+        try:
+            return func(pred, ref)
+        except MetricUnavailable as exc:
+            unavailable.setdefault(name, str(exc))
+            return None
+
     @staticmethod
     def compute_f1(pred: str, gold: str) -> float:
         """Compute F1 score"""
         pred_tokens = set(pred.lower().split())
         gold_tokens = set(gold.lower().split())
-        
+
         if not pred_tokens and not gold_tokens:
             return 1.0
         if not pred_tokens or not gold_tokens:
             return 0.0
-        
+
         tp = len(pred_tokens & gold_tokens)
         precision = tp / len(pred_tokens)
         recall = tp / len(gold_tokens)
-        
+
         if precision + recall == 0:
             return 0.0
-        
+
         return 2 * precision * recall / (precision + recall)
-    
+
     @staticmethod
     def compute_bleu(pred: str, ref: str) -> float:
-        """Compute BLEU-4 score"""
-        try:
-            pred_tokens = nltk.word_tokenize(pred.lower())
-            ref_tokens = nltk.word_tokenize(ref.lower())
-            smoothie = SmoothingFunction().method1
-            return sentence_bleu([ref_tokens], pred_tokens, smoothing_function=smoothie)
-        except:
-            return 0.0
-    
+        """Compute BLEU-4 score.
+
+        Raises:
+            MetricUnavailable: if NLTK's tokenizer data is not available. The
+                metric is then unavailable, which is not the same as a score
+                of zero.
+        """
+        return compute_bleu(pred, ref)
+
     @staticmethod
     def compute_meteor(pred: str, ref: str) -> float:
-        """Compute METEOR score"""
-        try:
-            pred_tokens = nltk.word_tokenize(pred.lower())
-            ref_tokens = nltk.word_tokenize(ref.lower())
-            return meteor_score([ref_tokens], pred_tokens)
-        except:
-            return 0.0
+        """Compute METEOR score.
+
+        Raises:
+            MetricUnavailable: if NLTK's tokenizer or WordNet data is not
+                available.
+        """
+        return compute_meteor(pred, ref)
 
 if __name__ == "__main__":
     # Example usage

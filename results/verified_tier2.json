@@ -189,7 +189,7 @@
         0.0
       ],
       "n": 55,
-      "wallclock_sec": 0.2,
+      "wallclock_sec": 0.5,
       "predictions": [
         {
           "question": "What is the capital of France?",
@@ -644,7 +644,7 @@
         0.0
       ],
       "n": 55,
-      "wallclock_sec": 0.05,
+      "wallclock_sec": 0.11,
       "predictions": [
         {
           "question": "What is the capital of France?",
@@ -996,7 +996,7 @@
         0.0
       ],
       "wilcoxon_p": null,
-      "n_nonzero_diffs": NaN,
+      "n_nonzero_diffs": 0,
       "significant": false,
       "note": "Negative mean_diff favours TF-IDF."
     }
