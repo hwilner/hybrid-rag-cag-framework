@@ -25,6 +25,7 @@ whole fix and no amount of retrieval work is warranted.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -34,9 +35,25 @@ from collections import Counter
 
 import numpy as np
 
-BRANCH_DIR = os.environ.get("HYBRID_BRANCH_DIR", "/workspace/branches/main")
+# The checkout this script lives in. It is the default evaluation target, so
+# that a plain `python src/ceiling_test.py` works from a clean clone with no
+# environment setup -- the hard-coded path this used to default to
+# ("/workspace/branches/main") does not exist in any clone.
+SELF_SRC = os.path.dirname(os.path.abspath(__file__))
+SELF_CHECKOUT = os.path.dirname(SELF_SRC)
+
+BRANCH_DIR = os.environ.get("HYBRID_BRANCH_DIR") or SELF_CHECKOUT
 sys.path.insert(0, os.path.join(BRANCH_DIR, "src"))
 sys.path.insert(0, BRANCH_DIR)
+
+# The dataset loader is harness code, not code under test, so it is imported
+# by explicit path. BRANCH_DIR/src sits ahead of this checkout's src on
+# sys.path and would otherwise shadow it.
+_LOADER_SPEC = importlib.util.spec_from_file_location(
+    "dataset_loader", os.path.join(SELF_SRC, "dataset_loader.py")
+)
+dataset_loader = importlib.util.module_from_spec(_LOADER_SPEC)
+_LOADER_SPEC.loader.exec_module(dataset_loader)
 
 STOP = {
     "a", "an", "the", "of", "in", "on", "at", "to", "for", "and", "or", "is",
@@ -79,16 +96,15 @@ def token_f1(pred, gold) -> float:
 
 
 def load_dataset():
-    import ast, collections, datetime, logging
-    path = os.path.join(BRANCH_DIR, "src", "option3_full_scale_evaluation.py")
-    tree = ast.parse(open(path).read())
-    for node in tree.body:
-        if isinstance(node, ast.FunctionDef) and node.name == "create_large_scale_dataset":
-            ns = {"np": np, "logger": logging.getLogger("d"),
-                  "defaultdict": collections.defaultdict,
-                  "Counter": collections.Counter, "datetime": datetime.datetime}
-            exec(compile(ast.Module(body=[node], type_ignores=[]), path, "exec"), ns)
-            return ns["create_large_scale_dataset"]()
+    """Return the Tier-2 corpus and questions.
+
+    The loader lives in ``src/dataset_loader.py`` and is shared by every script
+    that needs this benchmark. It used to be a copy of the AST-extraction
+    below, which pointed at ``src/option3_full_scale_evaluation.py`` -- a file
+    that was quarantined under ``retracted/`` on 2026-10-13. This script
+    therefore died with a ``FileNotFoundError`` before doing any work.
+    """
+    return dataset_loader.load_tier2_dataset(BRANCH_DIR, fallback_dir=SELF_CHECKOUT)
 
 
 SENT = re.compile(r"(?<=[.!?])\s+")
@@ -120,6 +136,26 @@ def best_span(doc: str, question: str, max_words: int = 12) -> str:
         if best:
             return best
     return " ".join(words[:max_words])
+
+
+def current_ablation_path():
+    """Return the ablation run the "Hybrid (current)" row is copied from.
+
+    Defaults to the committed run, so that the documented command reproduces
+    the committed ``results/ceiling.json``. It used to require ``CURRENT`` to
+    be set by hand, which meant the documented command wrote a file that
+    silently lacked the row and no longer matched the published table.
+
+    Returns:
+        The path to read, or ``None`` when there is no ablation run to read.
+    """
+    current_path = os.environ.get("CURRENT")
+    if current_path is not None:
+        return current_path
+    default_current = os.path.join(
+        SELF_CHECKOUT, "results", "ablation", "ablation_main.json"
+    )
+    return default_current if os.path.exists(default_current) else None
 
 
 def main():
@@ -156,7 +192,12 @@ def main():
         out[name] = {"F1": float(f1), "containment": float(ct), "EM": float(em)}
         print(f"{name:<18} {f1:>7.4f} {ct:>8.4f} {em:>7.4f}")
 
-    cur = json.load(open(os.environ["CURRENT"])) if os.environ.get("CURRENT") else None
+    # The "Hybrid (current)" row is copied from an ablation run rather than
+    # measured here. It used to require CURRENT to be set by hand, which meant
+    # the documented command wrote a file that silently lacked the row and no
+    # longer matched the published table.
+    current_path = current_ablation_path()
+    cur = json.load(open(current_path)) if current_path else None
     if cur:
         h = cur["arms"]["Hybrid"]
         print("-" * 78)

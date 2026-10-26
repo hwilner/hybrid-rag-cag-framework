@@ -46,6 +46,7 @@ from __future__ import annotations
 import argparse
 import gc
 import importlib
+import importlib.util
 import json
 import os
 import re
@@ -59,7 +60,8 @@ from typing import Dict, List, Optional, Sequence
 # The checkout this script itself lives in. Used as the default evaluation
 # target so that a plain `python src/real_ablation.py --branch main ...` works
 # without the caller first exporting HYBRID_BRANCH_DIR by hand.
-SELF_CHECKOUT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SELF_SRC = os.path.dirname(os.path.abspath(__file__))
+SELF_CHECKOUT = os.path.dirname(SELF_SRC)
 
 BRANCH_DIR = os.environ.get("HYBRID_BRANCH_DIR") or SELF_CHECKOUT
 if not os.path.isdir(BRANCH_DIR):
@@ -70,6 +72,16 @@ if not os.path.isdir(BRANCH_DIR):
     )
 sys.path.insert(0, os.path.join(BRANCH_DIR, "src"))
 sys.path.insert(0, BRANCH_DIR)
+
+# The dataset loader is harness code, not code under test, so it is imported
+# by explicit path. BRANCH_DIR/src sits ahead of this checkout's src on
+# sys.path and would otherwise shadow it, and the loader has to be the same
+# code whichever branch is being evaluated.
+_LOADER_SPEC = importlib.util.spec_from_file_location(
+    "dataset_loader", os.path.join(SELF_SRC, "dataset_loader.py")
+)
+dataset_loader = importlib.util.module_from_spec(_LOADER_SPEC)
+_LOADER_SPEC.loader.exec_module(dataset_loader)
 
 
 def git_provenance(path: str) -> Dict[str, Optional[str]]:
@@ -156,30 +168,16 @@ def contains(pred: str, gold: str) -> float:
 # --------------------------------------------------------------------------- #
 
 def load_dataset():
-    """Pull the Tier-2 corpus/questions without importing the branch's torch deps."""
-    import ast
+    """Pull the Tier-2 corpus/questions without importing the branch's torch deps.
 
-    path = os.path.join(BRANCH_DIR, "src", "option3_full_scale_evaluation.py")
-    with open(path) as fh:
-        tree = ast.parse(fh.read())
-    for node in tree.body:
-        if isinstance(node, ast.FunctionDef) and node.name == "create_large_scale_dataset":
-            import collections
-            import datetime
-            import logging
-
-            import numpy as np
-
-            ns = {
-                "np": np,
-                "logger": logging.getLogger("ds"),
-                "defaultdict": collections.defaultdict,
-                "Counter": collections.Counter,
-                "datetime": datetime.datetime,
-            }
-            exec(compile(ast.Module(body=[node], type_ignores=[]), path, "exec"), ns)
-            return ns["create_large_scale_dataset"]()
-    raise SystemExit("could not locate create_large_scale_dataset")
+    The loader lives in ``src/dataset_loader.py`` and is shared by every script
+    that needs this benchmark. It used to be a copy of the AST-extraction
+    below, which pointed at ``src/option3_full_scale_evaluation.py`` -- a file
+    that was quarantined under ``retracted/`` on 2026-10-13. Every script that
+    carried a copy of that loader therefore died with a ``FileNotFoundError``
+    before doing any work.
+    """
+    return dataset_loader.load_tier2_dataset(BRANCH_DIR, fallback_dir=SELF_CHECKOUT)
 
 
 # --------------------------------------------------------------------------- #
@@ -312,6 +310,7 @@ def arm_hybrid(sys_, corpus, questions, max_gen_tokens, cfg):
 ARMS = {"RAG": arm_rag, "CAG": arm_cag, "Hybrid": arm_hybrid}
 
 
+
 # --------------------------------------------------------------------------- #
 
 def _score(preds, questions):
@@ -389,6 +388,7 @@ def main():
 
     sys_, cfg = build_real_system()
     print(f"[{args.branch}] real models loaded", flush=True)
+
 
     for name, fn in ARMS.items():
         if name in results["arms"] and \
