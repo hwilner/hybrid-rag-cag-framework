@@ -360,7 +360,42 @@ model defect.
 The corpus has few true dead zones. This is consistent with 7.1: documents are reachable, they
 just don't contain the answers being asked about.
 
-### 7.5 Metric ceiling
+### 7.5 The contrastive reranker is a no-op
+
+`ContrastiveReranker.rerank` re-encodes the retrieved documents and re-scores them by cosine
+similarity to the question — using **the same encoder and the same metric the dense retriever
+already used**:
+
+```python
+query_embedding = self.encoder.encode([query])       # all-mpnet-base-v2
+doc_embeddings = self.encoder.encode(documents)       # same encoder
+similarities = F.cosine_similarity(...)               # same cosine
+sorted_indices = similarities.argsort(descending=True)[:k]
+```
+
+Measured on all 55 questions (`src/reranker_check.py`, `results/reranker_check.json`):
+
+| Measurement | Value |
+|---|---|
+| Questions where the reranked **order** equals the dense order | **55/55 (100%)** |
+| Questions where reranking changed top-1 correctness | **0** |
+| Dense top-1 context recall | 36.4% |
+| Reranked top-1 context recall | 36.4% |
+| Dense top-k context recall | 38.2% |
+| Reranked top-k context recall | 38.2% |
+
+The reranker recomputes the retriever's own scores and produces **exactly the same ordering
+every time**. It cannot reorder except through numerical noise. It is dead weight that costs an
+extra encode of 10 documents per query.
+
+This is not a tuning problem — the component cannot do anything the retriever has not already
+done. Either it needs a genuinely different scoring model (a cross-encoder, a lexical signal),
+or it should be removed.
+
+Note this also confirms the §7.1 recall figures apply to the full pipeline, not just the dense
+stage, because the reranker leaves them unchanged.
+
+### 7.6 Metric ceiling
 
 | Gold-answer length | Count |
 |---|---|
@@ -373,7 +408,7 @@ Most golds are short. Token-F1 against a long extractive sentence is capped near
 1/length, which is why containment (0.327) exceeds F1 (0.189) for RAG. That gap is a metric
 artefact, not a quality difference.
 
-### 7.6 The generator cannot answer questions
+### 7.7 The generator cannot answer questions
 
 `facebook/bart-large` is a pretrained LM, never instruction-tuned for QA. Given the repo's
 prompt it echoes the prompt. Measured in `src/diagnose_generator.py`:
@@ -421,8 +456,11 @@ impossible (F1 0.276 exceeds the 0.187 ceiling).
 extractive system and for the current generator. Containment is the honest primary metric here;
 it separates a system that *found* the answer from one that *formatted* it well.
 
-**4. Do not invest in retrieval.** Recall@1 already equals recall@10. Reranking, hybrid search,
-graph indexes, and the contrastive reranker are all solving a problem this corpus does not have.
+**4. Do not invest in retrieval — and delete the reranker.** Recall@1 already equals recall@10,
+so better ranking cannot help. The `ContrastiveReranker` is worse than useless: it recomputes
+the retriever's own scores with the same encoder and returns the identical ordering on 55/55
+questions (§7.5). It costs an extra encode per query and changes nothing. A cross-encoder or a
+lexical signal would be a real reranker; the current one is not.
 
 **5. Drop or redefine the CAG ablation.** Without retrieval its containment is 0.0182 — it
 cannot work by construction. Either give it a corpus-appropriate task or remove it.
@@ -642,7 +680,7 @@ written with. No number in §1–§8 was changed by this revision.
   contrastive learning" remains an unsupported claim.
 - **No training run was performed.** The loss is verified differentiable; the model was not
   trained and no post-training metric is reported.
-- **The generator cannot answer questions** (§7.6). This is the dominant in-pipeline limitation.
+- **The generator cannot answer questions** (§7.7). This is the dominant in-pipeline limitation.
 - **The 55-question dataset is unfit for comparison** (§2.1, §7.2): 34/55 answers are absent
   from the corpus, capping any system at F1 0.187. Retrieval itself is already perfect
   (recall@1 = recall@10 = 38.2%), so this is a corpus defect, not a retriever defect.

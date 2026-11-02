@@ -1,0 +1,11 @@
+{
+  "n_questions": 55,
+  "dense_top1_recall": 0.36363636363636365,
+  "reranked_top1_recall": 0.36363636363636365,
+  "dense_topk_recall": 0.38181818181818183,
+  "reranked_topk_recall": 0.38181818181818183,
+  "reranker_changed": 0,
+  "reranker_made_worse": 0,
+  "reranker_made_better": 0,
+  "examples": []
+}
