@@ -1,0 +1,119 @@
+{
+  "answerable_questions": [
+    "What is the capital of France?",
+    "Who created the Python programming language?",
+    "What does AI stand for?",
+    "What is the tallest mountain in the world?",
+    "Who painted the Mona Lisa?",
+    "Which sport was invented by James Naismith?",
+    "What is the longest river in the world?",
+    "Who discovered penicillin?",
+    "What is the largest hot desert in the world?",
+    "Who invented the World Wide Web?",
+    "Which scientist developed the theory that revolutionized physics in the early 20th century?",
+    "What structure was built by Gustave Eiffel for the 1889 World's Fair?",
+    "Which scientist won Nobel Prizes in two different scientific fields?",
+    "Where were the modern Olympic Games first revived in 1896?",
+    "What biological process do plants use to produce glucose and oxygen?",
+    "Which empire controlled territory from Britain to North Africa at its height?",
+    "What programming language is known for its use in web development alongside HTML and CSS?",
+    "Which artist sculpted the statue of David and painted the Sistine Chapel ceiling?",
+    "What global conflict lasted from 1939 to 1945?",
+    "Which mountain range contains the world's highest peaks including Mount Everest?",
+    "How are machine learning and artificial intelligence related in terms of their hierarchical relationship?"
+  ],
+  "arms_restricted": {
+    "CAG": {
+      "EM": 0.0,
+      "F1": 0.05713972018319844,
+      "containment": 0.047619047619047616,
+      "n": 21
+    },
+    "Hybrid": {
+      "EM": 0.0,
+      "F1": 0.08816124446376547,
+      "containment": 0.7142857142857143,
+      "n": 21
+    },
+    "RAG": {
+      "EM": 0.0,
+      "F1": 0.10954489606937237,
+      "containment": 0.8571428571428571,
+      "n": 21
+    }
+  },
+  "comparisons_restricted": [
+    {
+      "bootstrap_ci95": [
+        -0.04754572492247873,
+        0.006502226420056457
+      ],
+      "comparison": "Hybrid - RAG",
+      "mean_delta": -0.0213836516056069,
+      "metric": "f1",
+      "n_nonzero_diffs": 8,
+      "wilcoxon_p": 0.1953125
+    },
+    {
+      "bootstrap_ci95": [
+        -0.017470292370274088,
+        0.0761043474751458
+      ],
+      "comparison": "Hybrid - CAG",
+      "mean_delta": 0.031021524280567037,
+      "metric": "f1",
+      "n_nonzero_diffs": 18,
+      "wilcoxon_p": 0.2666555457344222
+    },
+    {
+      "bootstrap_ci95": [
+        0.015065393246039567,
+        0.08756916455989186
+      ],
+      "comparison": "RAG - CAG",
+      "mean_delta": 0.052405175886173945,
+      "metric": "f1",
+      "n_nonzero_diffs": 19,
+      "wilcoxon_p": 0.015713232144881732
+    },
+    {
+      "bootstrap_ci95": [
+        0.47619047619047616,
+        0.8571428571428571
+      ],
+      "comparison": "Hybrid - CAG",
+      "mean_delta": 0.6666666666666666,
+      "metric": "contains",
+      "n_nonzero_diffs": 14,
+      "wilcoxon_p": 0.0001828106329818348
+    },
+    {
+      "bootstrap_ci95": [
+        0.6190476190476191,
+        0.9523809523809523
+      ],
+      "comparison": "RAG - CAG",
+      "mean_delta": 0.8095238095238095,
+      "metric": "contains",
+      "n_nonzero_diffs": 17,
+      "wilcoxon_p": 3.737981840170154e-05
+    }
+  ],
+  "description": "Restricted-set re-analysis of the committed three-arm ablation, limited to the questions whose gold answer appears in the corpus (the benchmark-repair option A from the README). No model was loaded and no question was re-run: every number here is an arithmetic re-aggregation of the committed per-question measurements.",
+  "full_set_integrity_check": "recomputed full-set per-arm aggregates match the committed arm-level aggregates exactly (tolerance 1e-12)",
+  "generated": "2026-11-16",
+  "method": "post-hoc re-aggregation of committed per-question measurements",
+  "n_questions_full": 55,
+  "n_questions_restricted": 21,
+  "new_model_runs": 0,
+  "source_artefacts": {
+    "ablation": {
+      "path": "results/ablation/ablation_main.json",
+      "sha256": "7e9fa40b67e5519b0c6c168e08e562af469c2eb7af2cddb6c8710ca18854f4e3"
+    },
+    "diagnosis": {
+      "path": "results/diagnosis.json",
+      "sha256": "a77342a8d58c280b723ab3cf0ad4fee21f3d6210006c9a38a1bb3de3fdfdf7db"
+    }
+  }
+}
