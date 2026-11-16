@@ -1,0 +1,1516 @@
+{
+  "base_seed": 0,
+  "comparisons_full": [
+    {
+      "bootstrap_ci95": [
+        -0.014761388349501614,
+        0.06587109478461005
+      ],
+      "comparison": "Hybrid - RAG",
+      "mean_delta": 0.031034117828460543,
+      "metric": "f1",
+      "n_nonzero_diffs": 22,
+      "wilcoxon_p": 0.0005927085876464844
+    },
+    {
+      "bootstrap_ci95": [
+        0.09602149788987517,
+        0.31834124366688293
+      ],
+      "comparison": "Hybrid - CAG",
+      "mean_delta": 0.20241723246622415,
+      "metric": "f1",
+      "n_nonzero_diffs": 47,
+      "wilcoxon_p": 0.019212657546859444
+    },
+    {
+      "bootstrap_ci95": [
+        0.05237851299715037,
+        0.29817342650781703
+      ],
+      "comparison": "RAG - CAG",
+      "mean_delta": 0.17138311463776362,
+      "metric": "f1",
+      "n_nonzero_diffs": 47,
+      "wilcoxon_p": 0.16339298892976795
+    },
+    {
+      "bootstrap_ci95": [
+        0.0,
+        0.05454545454545454
+      ],
+      "comparison": "Hybrid - RAG",
+      "mean_delta": 0.01818181818181818,
+      "metric": "contains",
+      "n_nonzero_diffs": 1,
+      "wilcoxon_p": null
+    },
+    {
+      "bootstrap_ci95": [
+        0.16363636363636364,
+        0.4
+      ],
+      "comparison": "Hybrid - CAG",
+      "mean_delta": 0.2727272727272727,
+      "metric": "contains",
+      "n_nonzero_diffs": 15,
+      "wilcoxon_p": 0.00010751117672950055
+    },
+    {
+      "bootstrap_ci95": [
+        0.12727272727272726,
+        0.38181818181818183
+      ],
+      "comparison": "RAG - CAG",
+      "mean_delta": 0.2545454545454545,
+      "metric": "contains",
+      "n_nonzero_diffs": 16,
+      "wilcoxon_p": 0.00046525815807105003
+    }
+  ],
+  "comparisons_restricted": [
+    {
+      "bootstrap_ci95": [
+        -0.13265306122448978,
+        0.04897959183673469
+      ],
+      "comparison": "Hybrid - RAG",
+      "mean_delta": -0.022600151171579742,
+      "metric": "f1",
+      "n_nonzero_diffs": 3,
+      "wilcoxon_p": null
+    },
+    {
+      "bootstrap_ci95": [
+        0.38526077097505673,
+        0.7698412698412698
+      ],
+      "comparison": "Hybrid - CAG",
+      "mean_delta": 0.5800453514739229,
+      "metric": "f1",
+      "n_nonzero_diffs": 17,
+      "wilcoxon_p": 0.00030424688151886614
+    },
+    {
+      "bootstrap_ci95": [
+        0.39257936507936514,
+        0.7984126984126984
+      ],
+      "comparison": "RAG - CAG",
+      "mean_delta": 0.6026455026455027,
+      "metric": "f1",
+      "n_nonzero_diffs": 18,
+      "wilcoxon_p": 0.0003736642834463435
+    },
+    {
+      "bootstrap_ci95": [
+        0.0,
+        0.14285714285714285
+      ],
+      "comparison": "Hybrid - RAG",
+      "mean_delta": 0.047619047619047616,
+      "metric": "contains",
+      "n_nonzero_diffs": 1,
+      "wilcoxon_p": null
+    },
+    {
+      "bootstrap_ci95": [
+        0.5238095238095238,
+        0.9047619047619048
+      ],
+      "comparison": "Hybrid - CAG",
+      "mean_delta": 0.7142857142857143,
+      "metric": "contains",
+      "n_nonzero_diffs": 15,
+      "wilcoxon_p": 0.00010751117672950055
+    },
+    {
+      "bootstrap_ci95": [
+        0.42857142857142855,
+        0.9047619047619048
+      ],
+      "comparison": "RAG - CAG",
+      "mean_delta": 0.6666666666666666,
+      "metric": "contains",
+      "n_nonzero_diffs": 16,
+      "wilcoxon_p": 0.00046525815807105003
+    }
+  ],
+  "decoding": "RAG: greedy (num_beams=1, do_sample=False). CAG/Hybrid: beam pass (num_beams=5, num_return_sequences=1) + nucleus pass (do_sample=True, top_p=0.9, temperature=0.7), seeded per question via question_seed(base_seed, arm, question).",
+  "description": "Three-arm RAG / CAG / Hybrid comparison with an instruction-tuned reader (the reader reform of issue #7). Same retrieval stack, prompts, decoding policy, metrics and statistics as the 2026-09 ablation; only the reader changed, from facebook/bart-large to google/flan-t5-small.",
+  "full": {
+    "CAG": {
+      "EM": 0.03636363636363636,
+      "F1": 0.1861915163407854,
+      "containment": 0.03636363636363636,
+      "n": 55
+    },
+    "Hybrid": {
+      "EM": 0.2727272727272727,
+      "F1": 0.3886087488070096,
+      "containment": 0.3090909090909091,
+      "n": 55
+    },
+    "RAG": {
+      "EM": 0.2727272727272727,
+      "F1": 0.35757463097854897,
+      "containment": 0.2909090909090909,
+      "n": 55
+    }
+  },
+  "generated": "2026-11-16",
+  "n_questions_full": 55,
+  "n_questions_restricted": 21,
+  "per_question": {
+    "CAG": [
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Paris",
+        "pred": "France",
+        "q": "What is the capital of France?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Guido van Rossum",
+        "pred": "john w. w. w. w. w. w. w. w. w. w. w. w. w. w. w.",
+        "q": "Who created the Python programming language?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Artificial intelligence",
+        "pred": "AI",
+        "q": "What does AI stand for?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Mount Everest",
+        "pred": "A mountain in the Himalayas",
+        "q": "What is the tallest mountain in the world?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Leonardo da Vinci",
+        "pred": "the famous painter",
+        "q": "Who painted the Mona Lisa?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Basketball",
+        "pred": "tennis",
+        "q": "Which sport was invented by James Naismith?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.6666666666666666,
+        "gold": "Amazon River",
+        "pred": "a river",
+        "q": "What is the longest river in the world?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Alexander Fleming",
+        "pred": "the ophthalmologist",
+        "q": "Who discovered penicillin?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.6666666666666666,
+        "gold": "Sahara Desert",
+        "pred": "a desert",
+        "q": "What is the largest hot desert in the world?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Tim Berners-Lee",
+        "pred": "john w. w. w. w. w. w. w. w. w. w. w. w. w. w. w.",
+        "q": "Who invented the World Wide Web?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Albert Einstein",
+        "pred": "john b. spencer",
+        "q": "Which scientist developed the theory that revolutionized physics in the early 20th century?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "The Eiffel Tower",
+        "pred": "Eiffel Tower",
+        "q": "What structure was built by Gustave Eiffel for the 1889 World's Fair?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Marie Curie",
+        "pred": "john d. sturgeon",
+        "q": "Which scientist won Nobel Prizes in two different scientific fields?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Athens, Greece",
+        "pred": "Olympic Stadium",
+        "q": "Where were the modern Olympic Games first revived in 1896?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Photosynthesis",
+        "pred": "Glucose production",
+        "q": "What biological process do plants use to produce glucose and oxygen?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.4,
+        "gold": "Roman Empire",
+        "pred": "empire of ethiopia",
+        "q": "Which empire controlled territory from Britain to North Africa at its height?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "JavaScript",
+        "pred": "HTML",
+        "q": "What programming language is known for its use in web development alongside HTML and CSS?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Michelangelo",
+        "pred": "David A. Larne",
+        "q": "Which artist sculpted the statue of David and painted the Sistine Chapel ceiling?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "World War II",
+        "pred": "World War II",
+        "q": "What global conflict lasted from 1939 to 1945?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Himalayas",
+        "pred": "Mount Everest",
+        "q": "Which mountain range contains the world's highest peaks including Mount Everest?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.6666666666666666,
+        "gold": "Machine learning is a subset of artificial intelligence",
+        "pred": "machine learning and artificial intelligence",
+        "q": "How are machine learning and artificial intelligence related in terms of their hierarchical relationship?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.2222222222222222,
+        "gold": "They are complementary processes where photosynthesis produces glucose and oxygen that cellular respiration uses for energy",
+        "pred": "cellular respiration",
+        "q": "What connects photosynthesis and cellular respiration in biological systems?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both were Italian Renaissance artists who created masterpieces during the same historical period",
+        "pred": "Michelangelo",
+        "q": "What historical connection exists between Leonardo da Vinci and Michelangelo in the Renaissance?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.26666666666666666,
+        "gold": "Mount Everest at 8,848 meters is much taller than the Eiffel Tower at 324 meters; Everest is in the Himalayas while the Eiffel Tower is in Paris",
+        "pred": "Mount Everest and the Eiffel Tower",
+        "q": "How do the heights of Mount Everest and the Eiffel Tower compare, and where are they located?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.11764705882352941,
+        "gold": "Darwin developed the theory of evolution by natural selection to explain how species change over time",
+        "pred": "Charles Darwin",
+        "q": "What theory connects Charles Darwin with species change and natural selection?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.27586206896551724,
+        "gold": "Both are high-level interpreted languages, but Python is known for versatility while JavaScript is primarily for web development",
+        "pred": "Python and JavaScript are similar and different as programming languages.",
+        "q": "How are Python and JavaScript similar and different as programming languages?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.3076923076923077,
+        "gold": "The modern Olympics were inspired by and revived the ancient Greek Olympic tradition",
+        "pred": "the ancient Olympics",
+        "q": "What connects the ancient Olympic Games with the modern Olympics revived in 1896?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.34782608695652173,
+        "gold": "Newton formulated the laws of motion and universal gravitation, establishing the foundation of classical mechanics",
+        "pred": "Isaac Newton's contributions relate to classical mechanics and physics.",
+        "q": "How do Isaac Newton's contributions relate to classical mechanics and physics?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.09090909090909093,
+        "gold": "She discovered radioactive elements and won Nobel Prizes in both physics and chemistry",
+        "pred": "Marie Curie devoted her life to science and technology.",
+        "q": "What role did Marie Curie play in advancing both physics and chemistry?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.21052631578947367,
+        "gold": "The Amazon is the longest river flowing through South America, while the Nile was crucial to ancient Egyptian civilization",
+        "pred": "Amazon and Nile",
+        "q": "How do the Amazon River and the Nile River compare in terms of length and geographical significance?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.2666666666666667,
+        "gold": "The Industrial Revolution began mechanization that evolved into today's technological automation and digitization",
+        "pred": "The Industrial Revolution",
+        "q": "What connects the Industrial Revolution with modern technological advancement?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.13636363636363635,
+        "gold": "Neural networks are AI models inspired by biological neural networks in the brain",
+        "pred": "A neural network is a network that relates to both biological inspiration and artificial intelligence. Therefore, the neural network is a network that relates to both biological inspiration and artificial intelligence. Therefore, the neural network is a network",
+        "q": "How do neural networks relate to both biological inspiration and artificial intelligence?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.3846153846153846,
+        "gold": "Galileo used telescopic observations to support the heliocentric model, changing our view of Earth's place in the universe",
+        "pred": "Galileo's observations with our understanding of the solar system",
+        "q": "What connects Galileo's observations with our understanding of the solar system?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.28571428571428575,
+        "gold": "Blockchain uses distributed cryptographic verification while traditional databases rely on centralized control for data integrity",
+        "pred": "Blockchain technology and traditional database systems differ in their approach to data integrity",
+        "q": "How do blockchain technology and traditional database systems differ in their approach to data integrity?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.16666666666666669,
+        "gold": "Shakespeare exemplified Renaissance ideals through innovative dramatic works that explored human nature and classical themes",
+        "pred": "Shakespeare's literary contributions to the broader Renaissance cultural movement",
+        "q": "What connects Shakespeare's literary contributions with the broader Renaissance cultural movement?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "AI is the broadest field, machine learning is a subset of AI, and deep learning is a specialized subset of machine learning using neural networks",
+        "pred": "in a hierarchical structure",
+        "q": "How do artificial intelligence, machine learning, and deep learning relate to each other in a hierarchical structure?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.1,
+        "gold": "The Renaissance was a period of cultural rebirth that both Leonardo and Michelangelo exemplified through revolutionary artistic innovations and interdisciplinary work",
+        "pred": "Renaissance",
+        "q": "What cultural and historical significance connects the Renaissance period with artists Leonardo da Vinci and Michelangelo?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.2580645161290323,
+        "gold": "Einstein revolutionized physics with relativity theory, Newton established classical mechanics, and Darwin transformed biology with evolution theory",
+        "pred": "the scientific contributions of Einstein, Newton, and Darwin each represent paradigm shifts in different fields",
+        "q": "How do the scientific contributions of Einstein, Newton, and Darwin each represent paradigm shifts in different fields?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Python serves as a primary language for AI development, while JavaScript enables AI integration in web applications and user interfaces",
+        "pred": "programming languages",
+        "q": "What role do programming languages like Python and JavaScript play in the broader context of artificial intelligence and web technologies?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.12,
+        "gold": "The Olympics bridge ancient Greek traditions with modern global unity, showcasing human achievement while promoting international peace",
+        "pred": "The Olympic Games represent the intersection of ancient culture, modern international cooperation, and athletic excellence. The Olympic Games represent the intersection of ancient culture, modern international cooperation, and athletic excellence. The Olympic Games represent the intersection of ancient culture, modern",
+        "q": "How do the Olympic Games represent the intersection of ancient culture, modern international cooperation, and athletic excellence?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.08333333333333334,
+        "gold": "Both involve systematic conversion of inputs to outputs: photosynthesis converts light to chemical energy, AI converts data to intelligent outputs",
+        "pred": "Photosynthesis and artificial intelligence",
+        "q": "What parallels exist between biological processes like photosynthesis and technological systems like artificial intelligence?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.29411764705882354,
+        "gold": "Both represent massive human efforts to connect across distances - the Great Wall for physical defense, the Internet for global communication",
+        "pred": "geographical landmarks like the Great Wall of China and modern technological networks like the Internet represent human connectivity",
+        "q": "How do geographical landmarks like the Great Wall of China and modern technological networks like the Internet represent human connectivity?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.33333333333333326,
+        "gold": "Both periods represent explosions of human creativity - Renaissance combined art and science, modern era combines technology with human-centered design",
+        "pred": "The Renaissance Cultural Innovation and Modern technological innovation are the two main sources of human creativity and creativity.",
+        "q": "What connections exist between Renaissance cultural innovation and modern technological innovation in terms of human creativity?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.2380952380952381,
+        "gold": "Both demonstrate interdisciplinary success - Curie bridged physics and chemistry, computer vision combines AI, mathematics, and engineering",
+        "pred": "In the late 1930s, Marie Curie created a series of interdisciplinary projects focusing on the design of computer vision and the development of a computer-based approach to the design of the computer.",
+        "q": "How do Marie Curie's interdisciplinary achievements parallel modern approaches in computer vision that combine multiple fields?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both created systematic methods for trusted records - Romans through centralized administration, blockchain through decentralized verification",
+        "pred": "Roman governance",
+        "q": "What systematic approaches do both Roman governance and blockchain technology represent in terms of record-keeping?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.10526315789473682,
+        "gold": "Both involve iterative improvement through selection - evolution through natural selection, machine learning through algorithmic optimization",
+        "pred": "Darwin's theory of evolution is based on a theory of evolution that relates to modern machine learning algorithms that adapt and improve algorithms that adapt and improve algorithms that adapt and improve algorithms that adapt and improve algorithms that adapt and improve",
+        "q": "How do the evolutionary principles discovered by Darwin relate to modern machine learning algorithms that adapt and improve?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.28571428571428575,
+        "gold": "Both democratized information access - printing press made books widely available, Internet makes global information instantly accessible",
+        "pred": "The printing press revolutionized the printing press with modern Internet technologies in information dissemination.",
+        "q": "What connects the revolutionary impact of the printing press with modern Internet technologies in information dissemination?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.1,
+        "gold": "Both represent paradigm shifts - quantum mechanics introduced probabilistic vs deterministic physics, AI introduces adaptive vs programmed computing",
+        "pred": "quantum mechanical principles",
+        "q": "How do quantum mechanical principles challenge classical physics similarly to how AI challenges traditional computing?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both serve as critical transportation systems - rivers carry nutrients and enable life, networks carry information and enable digital communication",
+        "pred": "i.e. a forest ecosystem",
+        "q": "What role do rivers like the Amazon and Nile play in their respective ecosystems compared to data flows in computer networks?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both involve global collaboration, shared knowledge, and collective problem-solving to achieve breakthrough innovations",
+        "pred": "Human Genome Project parallels modern open-source software development. The Human Genome Project parallels modern open-source software development. The Human Genome Project parallels modern open-source software development. The Human Genome Project parallel",
+        "q": "How do the collaborative aspects of the Human Genome Project parallel modern open-source software development?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.09090909090909091,
+        "gold": "Both involve mathematical principles for realistic representation - Renaissance perspective geometry, computer graphics 3D modeling and rendering",
+        "pred": "he artistic techniques of Renaissance masters",
+        "q": "What connections exist between the artistic techniques of Renaissance masters and modern computer graphics algorithms?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.1875,
+        "gold": "Both solve the fundamental problem of location determination - ancient methods used stars and landmarks, modern GPS uses satellite triangulation",
+        "pred": "Navigation is a digital and physical communication technique which is primarily used by ancient explorers.",
+        "q": "How do the navigation methods used by ancient explorers relate to modern GPS and satellite technology?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.20689655172413793,
+        "gold": "Both identify patterns to distinguish between normal and abnormal - immune systems detect pathogens, ML algorithms classify data patterns",
+        "pred": "the immune system's pattern recognition and machine learning's classification algorithms",
+        "q": "What parallels exist between the immune system's pattern recognition and machine learning's classification algorithms?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.2040816326530612,
+        "gold": "Both address information preservation across time - handwritten records through physical protection, digital systems through redundant storage and format migration",
+        "pred": "The preservation methods used for ancient handwritten records compare to modern data backup and archival systems. The preservation methods used for ancient handwritten records compare to modern data backup and archival systems.",
+        "q": "How do the preservation methods used for ancient handwritten records compare to modern data backup and archival systems?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.15384615384615383,
+        "gold": "Both embody collective knowledge creation and democratic participation in information sharing and decision-making processes",
+        "pred": "the democratic ideals of ancient Athens and modern collaborative platforms like Wikipedia",
+        "q": "What connections exist between the democratic ideals of ancient Athens and modern collaborative platforms like Wikipedia?"
+      }
+    ],
+    "Hybrid": [
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Paris",
+        "pred": "Tokyo",
+        "q": "What is the capital of France?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Guido van Rossum",
+        "pred": "Guido van Rossum",
+        "q": "Who created the Python programming language?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Artificial intelligence",
+        "pred": "Artificial intelligence",
+        "q": "What does AI stand for?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Mount Everest",
+        "pred": "Mount Everest",
+        "q": "What is the tallest mountain in the world?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Leonardo da Vinci",
+        "pred": "Leonardo da Vinci",
+        "q": "Who painted the Mona Lisa?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Basketball",
+        "pred": "Basketball",
+        "q": "Which sport was invented by James Naismith?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Amazon River",
+        "pred": "Amazon River",
+        "q": "What is the longest river in the world?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Alexander Fleming",
+        "pred": "Alexander Fleming",
+        "q": "Who discovered penicillin?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Sahara Desert",
+        "pred": "The Sahara Desert",
+        "q": "What is the largest hot desert in the world?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Tim Berners-Lee",
+        "pred": "Tim Berners-Lee",
+        "q": "Who invented the World Wide Web?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Albert Einstein",
+        "pred": "Albert Einstein",
+        "q": "Which scientist developed the theory that revolutionized physics in the early 20th century?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "The Eiffel Tower",
+        "pred": "The Eiffel Tower",
+        "q": "What structure was built by Gustave Eiffel for the 1889 World's Fair?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Marie Curie",
+        "pred": "Marie Curie",
+        "q": "Which scientist won Nobel Prizes in two different scientific fields?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.5,
+        "gold": "Athens, Greece",
+        "pred": "Olympia, Greece",
+        "q": "Where were the modern Olympic Games first revived in 1896?"
+      },
+      {
+        "contains": 1.0,
+        "em": 0.0,
+        "f1": 0.07142857142857142,
+        "gold": "Photosynthesis",
+        "pred": "Photosynthesis is the process by which green plants, algae, and certain bacteria convert sunlight, carbon dioxide, and water into glucose and oxygen, forming the basis of most food chains",
+        "q": "What biological process do plants use to produce glucose and oxygen?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Roman Empire",
+        "pred": "Roman Empire",
+        "q": "Which empire controlled territory from Britain to North Africa at its height?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "JavaScript",
+        "pred": "JavaScript",
+        "q": "What programming language is known for its use in web development alongside HTML and CSS?"
+      },
+      {
+        "contains": 1.0,
+        "em": 0.0,
+        "f1": 0.6666666666666666,
+        "gold": "Michelangelo",
+        "pred": "Michelangelo Buonarroti",
+        "q": "Which artist sculpted the statue of David and painted the Sistine Chapel ceiling?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "World War II",
+        "pred": "World War II",
+        "q": "What global conflict lasted from 1939 to 1945?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Himalayas",
+        "pred": "Himalayan mountain range",
+        "q": "Which mountain range contains the world's highest peaks including Mount Everest?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.34285714285714286,
+        "gold": "Machine learning is a subset of artificial intelligence",
+        "pred": "Deep learning is a subset of machine learning that uses artificial neural networks with multiple layers (hence 'deep') to learn complex patterns and representations from large amounts of data",
+        "q": "How are machine learning and artificial intelligence related in terms of their hierarchical relationship?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "They are complementary processes where photosynthesis produces glucose and oxygen that cellular respiration uses for energy",
+        "pred": "Neural networks",
+        "q": "What connects photosynthesis and cellular respiration in biological systems?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.11764705882352942,
+        "gold": "Both were Italian Renaissance artists who created masterpieces during the same historical period",
+        "pred": "Italian Renaissance polymath whose interests included invention, drawing, painting, sculpture, architecture, science, music, mathematics, engineering, literature, anatomy, geology, astronomy, botany, and paleontology",
+        "q": "What historical connection exists between Leonardo da Vinci and Michelangelo in the Renaissance?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Mount Everest at 8,848 meters is much taller than the Eiffel Tower at 324 meters; Everest is in the Himalayas while the Eiffel Tower is in Paris",
+        "pred": "the world's highest peaks",
+        "q": "How do the heights of Mount Everest and the Eiffel Tower compare, and where are they located?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.33333333333333337,
+        "gold": "Darwin developed the theory of evolution by natural selection to explain how species change over time",
+        "pred": "the theory of evolution",
+        "q": "What theory connects Charles Darwin with species change and natural selection?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.31999999999999995,
+        "gold": "Both are high-level interpreted languages, but Python is known for versatility while JavaScript is primarily for web development",
+        "pred": "JavaScript is a high-level, interpreted programming language created by Guido van Rossum and first released in 1991, known for its simplicity, readability, and versatility across multiple programming paradigms including procedural, object",
+        "q": "How are Python and JavaScript similar and different as programming languages?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.34146341463414637,
+        "gold": "The modern Olympics were inspired by and revived the ancient Greek Olympic tradition",
+        "pred": "The modern Olympic Games were revived in 1896 in Athens, Greece, by Baron Pierre de Coubertin, inspired by the ancient Olympic Games held in Olympia, Greece, from 776 BC to 393 AD",
+        "q": "What connects the ancient Olympic Games with the modern Olympics revived in 1896?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.6956521739130435,
+        "gold": "Newton formulated the laws of motion and universal gravitation, establishing the foundation of classical mechanics",
+        "pred": "formulated the three laws of motion and the law of universal gravitation",
+        "q": "How do Isaac Newton's contributions relate to classical mechanics and physics?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.11764705882352941,
+        "gold": "She discovered radioactive elements and won Nobel Prizes in both physics and chemistry",
+        "pred": "pioneering physicist and chemist",
+        "q": "What role did Marie Curie play in advancing both physics and chemistry?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.2857142857142857,
+        "gold": "The Amazon is the longest river flowing through South America, while the Nile was crucial to ancient Egyptian civilization",
+        "pred": "The Amazon River is the longest river in the world, flowing approximately 4,345 miles from its source in the Peruvian Andes to its mouth at the Atlantic Ocean in Brazil",
+        "q": "How do the Amazon River and the Nile River compare in terms of length and geographical significance?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.07407407407407408,
+        "gold": "The Industrial Revolution began mechanization that evolved into today's technological automation and digitization",
+        "pred": "the transition from hand production methods to mechanized manufacturing, fundamentally transforming society, economy, and technology",
+        "q": "What connects the Industrial Revolution with modern technological advancement?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.1,
+        "gold": "Neural networks are AI models inspired by biological neural networks in the brain",
+        "pred": "Deep learning is a subset of machine learning that uses artificial neural networks with multiple layers (hence 'deep') to learn complex patterns and representations from large amounts of data",
+        "q": "How do neural networks relate to both biological inspiration and artificial intelligence?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.2727272727272727,
+        "gold": "Galileo used telescopic observations to support the heliocentric model, changing our view of Earth's place in the universe",
+        "pred": "the heliocentric model of the solar system",
+        "q": "What connects Galileo's observations with our understanding of the solar system?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.10256410256410255,
+        "gold": "Blockchain uses distributed cryptographic verification while traditional databases rely on centralized control for data integrity",
+        "pred": "Blockchain technology is a distributed ledger technology that maintains a continuously growing list of records (blocks) linked and secured using cryptography, providing transparency, immutability, and decentralization",
+        "q": "How do blockchain technology and traditional database systems differ in their approach to data integrity?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Shakespeare exemplified Renaissance ideals through innovative dramatic works that explored human nature and classical themes",
+        "pred": "literary contributions",
+        "q": "What connects Shakespeare's literary contributions with the broader Renaissance cultural movement?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.16216216216216214,
+        "gold": "AI is the broadest field, machine learning is a subset of AI, and deep learning is a specialized subset of machine learning using neural networks",
+        "pred": "multiple layers (hence 'deep') to learn complex patterns and representations from large amounts of data",
+        "q": "How do artificial intelligence, machine learning, and deep learning relate to each other in a hierarchical structure?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.09523809523809525,
+        "gold": "The Renaissance was a period of cultural rebirth that both Leonardo and Michelangelo exemplified through revolutionary artistic innovations and interdisciplinary work",
+        "pred": "Italian Renaissance",
+        "q": "What cultural and historical significance connects the Renaissance period with artists Leonardo da Vinci and Michelangelo?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.23529411764705882,
+        "gold": "Einstein revolutionized physics with relativity theory, Newton established classical mechanics, and Darwin transformed biology with evolution theory",
+        "pred": "fundamentally transformed views of society and nature, with key figures including Copernicus, Galileo, Kepler, Newton, and Descartes",
+        "q": "How do the scientific contributions of Einstein, Newton, and Darwin each represent paradigm shifts in different fields?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Python serves as a primary language for AI development, while JavaScript enables AI integration in web applications and user interfaces",
+        "pred": "programming",
+        "q": "What role do programming languages like Python and JavaScript play in the broader context of artificial intelligence and web technologies?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "The Olympics bridge ancient Greek traditions with modern global unity, showcasing human achievement while promoting international peace",
+        "pred": "Swimming is both a recreational activity and competitive sport involving propelling oneself through water using limbs",
+        "q": "How do the Olympic Games represent the intersection of ancient culture, modern international cooperation, and athletic excellence?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.046511627906976744,
+        "gold": "Both involve systematic conversion of inputs to outputs: photosynthesis converts light to chemical energy, AI converts data to intelligent outputs",
+        "pred": "Neural networks are computational models inspired by biological neural networks, consisting of interconnected nodes that process information through weighted connections and activation functions",
+        "q": "What parallels exist between biological processes like photosynthesis and technological systems like artificial intelligence?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.20833333333333334,
+        "gold": "Both represent massive human efforts to connect across distances - the Great Wall for physical defense, the Internet for global communication",
+        "pred": "The Great Wall of China is an ancient series of walls and fortifications stretching over 13,000 miles across northern China, built over many centuries for defense against northern invasions and raids",
+        "q": "How do geographical landmarks like the Great Wall of China and modern technological networks like the Internet represent human connectivity?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.11764705882352941,
+        "gold": "Both periods represent explosions of human creativity - Renaissance combined art and science, modern era combines technology with human-centered design",
+        "pred": "The Scientific Revolution of the 16th and 17th centuries fundamentally transformed views of society and nature",
+        "q": "What connections exist between Renaissance cultural innovation and modern technological innovation in terms of human creativity?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.11111111111111112,
+        "gold": "Both demonstrate interdisciplinary success - Curie bridged physics and chemistry, computer vision combines AI, mathematics, and engineering",
+        "pred": "enables machines to interpret, analyze, and make decisions based on visual information from digital images, videos, and real-world environments",
+        "q": "How do Marie Curie's interdisciplinary achievements parallel modern approaches in computer vision that combine multiple fields?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both created systematic methods for trusted records - Romans through centralized administration, blockchain through decentralized verification",
+        "pred": "transparency, immutability, and decentralization",
+        "q": "What systematic approaches do both Roman governance and blockchain technology represent in terms of record-keeping?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.18750000000000003,
+        "gold": "Both involve iterative improvement through selection - evolution through natural selection, machine learning through algorithmic optimization",
+        "pred": "natural selection, explaining how species change and adapt over time through genetic variation, inheritance, and survival advantages",
+        "q": "How do the evolutionary principles discovered by Darwin relate to modern machine learning algorithms that adapt and improve?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.04761904761904762,
+        "gold": "Both democratized information access - printing press made books widely available, Internet makes global information instantly accessible",
+        "pred": "The World Wide Web, invented by Tim Berners-Lee in 1989, is an information system where documents and resources are identified by URLs and interconnected via hypertext links",
+        "q": "What connects the revolutionary impact of the printing press with modern Internet technologies in information dissemination?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.12903225806451615,
+        "gold": "Both represent paradigm shifts - quantum mechanics introduced probabilistic vs deterministic physics, AI introduces adaptive vs programmed computing",
+        "pred": "quantum mechanics describes the physical properties of nature at the scale of atoms and subatomic particles",
+        "q": "How do quantum mechanical principles challenge classical physics similarly to how AI challenges traditional computing?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both serve as critical transportation systems - rivers carry nutrients and enable life, networks carry information and enable digital communication",
+        "pred": "the longest river in the world, flowing approximately 4,345 miles from its source in the Peruvian Andes to its mouth at the Atlantic Ocean in Brazil",
+        "q": "What role do rivers like the Amazon and Nile play in their respective ecosystems compared to data flows in computer networks?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both involve global collaboration, shared knowledge, and collective problem-solving to achieve breakthrough innovations",
+        "pred": "Git being the most widely used distributed version control system for software development",
+        "q": "How do the collaborative aspects of the Human Genome Project parallel modern open-source software development?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.2222222222222222,
+        "gold": "Both involve mathematical principles for realistic representation - Renaissance perspective geometry, computer graphics 3D modeling and rendering",
+        "pred": "computer graphics",
+        "q": "What connections exist between the artistic techniques of Renaissance masters and modern computer graphics algorithms?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.09999999999999999,
+        "gold": "Both solve the fundamental problem of location determination - ancient methods used stars and landmarks, modern GPS uses satellite triangulation",
+        "pred": "Galileo Galilei used telescopic observations to support the heliocentric model of the solar system, fundamentally changing our understanding of Earth's place in the universe",
+        "q": "How do the navigation methods used by ancient explorers relate to modern GPS and satellite technology?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.17391304347826086,
+        "gold": "Both identify patterns to distinguish between normal and abnormal - immune systems detect pathogens, ML algorithms classify data patterns",
+        "pred": "Deep learning is a subset of machine learning that uses artificial neural networks with multiple layers (hence 'deep') to learn complex patterns and representations from large amounts of data",
+        "q": "What parallels exist between the immune system's pattern recognition and machine learning's classification algorithms?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both address information preservation across time - handwritten records through physical protection, digital systems through redundant storage and format migration",
+        "pred": "Convolutional neural networks (CNNs) are specialized neural networks particularly effective for processing grid-like data such as images, using convolutional layers to detect local features",
+        "q": "How do the preservation methods used for ancient handwritten records compare to modern data backup and archival systems?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.1951219512195122,
+        "gold": "Both embody collective knowledge creation and democratic participation in information sharing and decision-making processes",
+        "pred": "The World Wide Web, invented by Tim Berners-Lee in 1989, is an information system where documents and resources are identified by URLs and interconnected via hypertext links",
+        "q": "What connections exist between the democratic ideals of ancient Athens and modern collaborative platforms like Wikipedia?"
+      }
+    ],
+    "RAG": [
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Paris",
+        "pred": "Tokyo",
+        "q": "What is the capital of France?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Guido van Rossum",
+        "pred": "Guido van Rossum",
+        "q": "Who created the Python programming language?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Artificial intelligence",
+        "pred": "Artificial intelligence",
+        "q": "What does AI stand for?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Mount Everest",
+        "pred": "Mount Everest",
+        "q": "What is the tallest mountain in the world?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Leonardo da Vinci",
+        "pred": "Leonardo da Vinci",
+        "q": "Who painted the Mona Lisa?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Basketball",
+        "pred": "Basketball",
+        "q": "Which sport was invented by James Naismith?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Amazon River",
+        "pred": "Amazon River",
+        "q": "What is the longest river in the world?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Alexander Fleming",
+        "pred": "Alexander Fleming",
+        "q": "Who discovered penicillin?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Sahara Desert",
+        "pred": "Sahara Desert",
+        "q": "What is the largest hot desert in the world?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Tim Berners-Lee",
+        "pred": "Tim Berners-Lee",
+        "q": "Who invented the World Wide Web?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Albert Einstein",
+        "pred": "Albert Einstein",
+        "q": "Which scientist developed the theory that revolutionized physics in the early 20th century?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "The Eiffel Tower",
+        "pred": "The Eiffel Tower",
+        "q": "What structure was built by Gustave Eiffel for the 1889 World's Fair?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Marie Curie",
+        "pred": "Marie Curie",
+        "q": "Which scientist won Nobel Prizes in two different scientific fields?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.5,
+        "gold": "Athens, Greece",
+        "pred": "Olympia, Greece",
+        "q": "Where were the modern Olympic Games first revived in 1896?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Photosynthesis",
+        "pred": "Photosynthesis",
+        "q": "What biological process do plants use to produce glucose and oxygen?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "Roman Empire",
+        "pred": "Roman Empire",
+        "q": "Which empire controlled territory from Britain to North Africa at its height?"
+      },
+      {
+        "contains": 1.0,
+        "em": 1.0,
+        "f1": 1.0,
+        "gold": "JavaScript",
+        "pred": "JavaScript",
+        "q": "What programming language is known for its use in web development alongside HTML and CSS?"
+      },
+      {
+        "contains": 1.0,
+        "em": 0.0,
+        "f1": 0.6666666666666666,
+        "gold": "Michelangelo",
+        "pred": "Michelangelo Buonarroti",
+        "q": "Which artist sculpted the statue of David and painted the Sistine Chapel ceiling?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.6666666666666666,
+        "gold": "World War II",
+        "pred": "World War I",
+        "q": "What global conflict lasted from 1939 to 1945?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Himalayas",
+        "pred": "Himalayan",
+        "q": "Which mountain range contains the world's highest peaks including Mount Everest?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.22222222222222224,
+        "gold": "Machine learning is a subset of artificial intelligence",
+        "pred": "Deep learning",
+        "q": "How are machine learning and artificial intelligence related in terms of their hierarchical relationship?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "They are complementary processes where photosynthesis produces glucose and oxygen that cellular respiration uses for energy",
+        "pred": "Neural networks",
+        "q": "What connects photosynthesis and cellular respiration in biological systems?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both were Italian Renaissance artists who created masterpieces during the same historical period",
+        "pred": "the Sistine Chapel ceiling and the statue of David",
+        "q": "What historical connection exists between Leonardo da Vinci and Michelangelo in the Renaissance?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Mount Everest at 8,848 meters is much taller than the Eiffel Tower at 324 meters; Everest is in the Himalayas while the Eiffel Tower is in Paris",
+        "pred": "the world's highest peaks",
+        "q": "How do the heights of Mount Everest and the Eiffel Tower compare, and where are they located?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.33333333333333337,
+        "gold": "Darwin developed the theory of evolution by natural selection to explain how species change over time",
+        "pred": "the theory of evolution",
+        "q": "What theory connects Charles Darwin with species change and natural selection?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.31999999999999995,
+        "gold": "Both are high-level interpreted languages, but Python is known for versatility while JavaScript is primarily for web development",
+        "pred": "JavaScript is a high-level, interpreted programming language created by Guido van Rossum and first released in 1991, known for its simplicity, readability, and versatility across multiple programming paradigms including procedural, object",
+        "q": "How are Python and JavaScript similar and different as programming languages?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "The modern Olympics were inspired by and revived the ancient Greek Olympic tradition",
+        "pred": "Olympia, Greece",
+        "q": "What connects the ancient Olympic Games with the modern Olympics revived in 1896?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.4999999999999999,
+        "gold": "Newton formulated the laws of motion and universal gravitation, establishing the foundation of classical mechanics",
+        "pred": "establishing the mathematical foundation of classical mechanics and revolutionizing physics and astronomy",
+        "q": "How do Isaac Newton's contributions relate to classical mechanics and physics?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.11764705882352941,
+        "gold": "She discovered radioactive elements and won Nobel Prizes in both physics and chemistry",
+        "pred": "pioneering physicist and chemist",
+        "q": "What role did Marie Curie play in advancing both physics and chemistry?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.2,
+        "gold": "The Amazon is the longest river flowing through South America, while the Nile was crucial to ancient Egyptian civilization",
+        "pred": "the longest river in the world",
+        "q": "How do the Amazon River and the Nile River compare in terms of length and geographical significance?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "The Industrial Revolution began mechanization that evolved into today's technological automation and digitization",
+        "pred": "the transition from hand production methods to mechanized manufacturing",
+        "q": "What connects the Industrial Revolution with modern technological advancement?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Neural networks are AI models inspired by biological neural networks in the brain",
+        "pred": "Deep learning",
+        "q": "How do neural networks relate to both biological inspiration and artificial intelligence?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.21052631578947367,
+        "gold": "Galileo used telescopic observations to support the heliocentric model, changing our view of Earth's place in the universe",
+        "pred": "telescopic observations",
+        "q": "What connects Galileo's observations with our understanding of the solar system?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.10256410256410255,
+        "gold": "Blockchain uses distributed cryptographic verification while traditional databases rely on centralized control for data integrity",
+        "pred": "blockchain technology is a distributed ledger technology that maintains a continuously growing list of records (blocks) linked and secured using cryptography, providing transparency, immutability, and decentralization",
+        "q": "How do blockchain technology and traditional database systems differ in their approach to data integrity?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Shakespeare exemplified Renaissance ideals through innovative dramatic works that explored human nature and classical themes",
+        "pred": "The Scientific Revolution",
+        "q": "What connects Shakespeare's literary contributions with the broader Renaissance cultural movement?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.16666666666666669,
+        "gold": "AI is the broadest field, machine learning is a subset of AI, and deep learning is a specialized subset of machine learning using neural networks",
+        "pred": "machine learning",
+        "q": "How do artificial intelligence, machine learning, and deep learning relate to each other in a hierarchical structure?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.15384615384615385,
+        "gold": "The Renaissance was a period of cultural rebirth that both Leonardo and Michelangelo exemplified through revolutionary artistic innovations and interdisciplinary work",
+        "pred": "the Sistine Chapel ceiling and the statue of David",
+        "q": "What cultural and historical significance connects the Renaissance period with artists Leonardo da Vinci and Michelangelo?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.06896551724137931,
+        "gold": "Einstein revolutionized physics with relativity theory, Newton established classical mechanics, and Darwin transformed biology with evolution theory",
+        "pred": "revolutionizing our understanding of space, time, gravity, energy, and the structure of the universe",
+        "q": "How do the scientific contributions of Einstein, Newton, and Darwin each represent paradigm shifts in different fields?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Python serves as a primary language for AI development, while JavaScript enables AI integration in web applications and user interfaces",
+        "pred": "programming paradigms",
+        "q": "What role do programming languages like Python and JavaScript play in the broader context of artificial intelligence and web technologies?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "The Olympics bridge ancient Greek traditions with modern global unity, showcasing human achievement while promoting international peace",
+        "pred": "Swimming",
+        "q": "How do the Olympic Games represent the intersection of ancient culture, modern international cooperation, and athletic excellence?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both involve systematic conversion of inputs to outputs: photosynthesis converts light to chemical energy, AI converts data to intelligent outputs",
+        "pred": "Neural networks",
+        "q": "What parallels exist between biological processes like photosynthesis and technological systems like artificial intelligence?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.08333333333333333,
+        "gold": "Both represent massive human efforts to connect across distances - the Great Wall for physical defense, the Internet for global communication",
+        "pred": "standardized Internet Protocol Suite (TCP/IP)",
+        "q": "How do geographical landmarks like the Great Wall of China and modern technological networks like the Internet represent human connectivity?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both periods represent explosions of human creativity - Renaissance combined art and science, modern era combines technology with human-centered design",
+        "pred": "The Scientific Revolution",
+        "q": "What connections exist between Renaissance cultural innovation and modern technological innovation in terms of human creativity?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.11111111111111112,
+        "gold": "Both demonstrate interdisciplinary success - Curie bridged physics and chemistry, computer vision combines AI, mathematics, and engineering",
+        "pred": "enables machines to interpret, analyze, and make decisions based on visual information from digital images, videos, and real-world environments",
+        "q": "How do Marie Curie's interdisciplinary achievements parallel modern approaches in computer vision that combine multiple fields?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both created systematic methods for trusted records - Romans through centralized administration, blockchain through decentralized verification",
+        "pred": "encryption",
+        "q": "What systematic approaches do both Roman governance and blockchain technology represent in terms of record-keeping?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.18750000000000003,
+        "gold": "Both involve iterative improvement through selection - evolution through natural selection, machine learning through algorithmic optimization",
+        "pred": "natural selection, explaining how species change and adapt over time through genetic variation, inheritance, and survival advantages",
+        "q": "How do the evolutionary principles discovered by Darwin relate to modern machine learning algorithms that adapt and improve?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both democratized information access - printing press made books widely available, Internet makes global information instantly accessible",
+        "pred": "The World Wide Web",
+        "q": "What connects the revolutionary impact of the printing press with modern Internet technologies in information dissemination?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both represent paradigm shifts - quantum mechanics introduced probabilistic vs deterministic physics, AI introduces adaptive vs programmed computing",
+        "pred": "wave-particle duality and uncertainty principles",
+        "q": "How do quantum mechanical principles challenge classical physics similarly to how AI challenges traditional computing?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both serve as critical transportation systems - rivers carry nutrients and enable life, networks carry information and enable digital communication",
+        "pred": "resources",
+        "q": "What role do rivers like the Amazon and Nile play in their respective ecosystems compared to data flows in computer networks?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both involve global collaboration, shared knowledge, and collective problem-solving to achieve breakthrough innovations",
+        "pred": "Git",
+        "q": "How do the collaborative aspects of the Human Genome Project parallel modern open-source software development?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.05555555555555556,
+        "gold": "Both involve mathematical principles for realistic representation - Renaissance perspective geometry, computer graphics 3D modeling and rendering",
+        "pred": "enables machines to interpret, analyze, and make decisions based on visual information from digital images, videos, and real-world environments",
+        "q": "What connections exist between the artistic techniques of Renaissance masters and modern computer graphics algorithms?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both solve the fundamental problem of location determination - ancient methods used stars and landmarks, modern GPS uses satellite triangulation",
+        "pred": "telescopic observations",
+        "q": "How do the navigation methods used by ancient explorers relate to modern GPS and satellite technology?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both identify patterns to distinguish between normal and abnormal - immune systems detect pathogens, ML algorithms classify data patterns",
+        "pred": "Deep learning",
+        "q": "What parallels exist between the immune system's pattern recognition and machine learning's classification algorithms?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both address information preservation across time - handwritten records through physical protection, digital systems through redundant storage and format migration",
+        "pred": "convolutional layers",
+        "q": "How do the preservation methods used for ancient handwritten records compare to modern data backup and archival systems?"
+      },
+      {
+        "contains": 0.0,
+        "em": 0.0,
+        "f1": 0.0,
+        "gold": "Both embody collective knowledge creation and democratic participation in information sharing and decision-making processes",
+        "pred": "The World Wide Web",
+        "q": "What connections exist between the democratic ideals of ancient Athens and modern collaborative platforms like Wikipedia?"
+      }
+    ]
+  },
+  "preregistered_success_criterion": "Hybrid beats RAG on token-F1 on the restricted set with a bootstrap 95% CI excluding zero. Any other outcome is reported as measured.",
+  "reader": "google/flan-t5-small",
+  "restricted": {
+    "CAG": {
+      "EM": 0.09523809523809523,
+      "F1": 0.20952380952380953,
+      "containment": 0.09523809523809523,
+      "n": 21
+    },
+    "Hybrid": {
+      "EM": 0.7142857142857143,
+      "F1": 0.7895691609977323,
+      "containment": 0.8095238095238095,
+      "n": 21
+    },
+    "RAG": {
+      "EM": 0.7142857142857143,
+      "F1": 0.8121693121693122,
+      "containment": 0.7619047619047619,
+      "n": 21
+    }
+  },
+  "retriever": "sentence-transformers/all-mpnet-base-v2",
+  "wallclock_seconds": 265.8
+}
