@@ -183,8 +183,12 @@ a metric artefact, not a quality difference.
    406 M-parameter Hybrid's 0.1821. An instruction-tuned reader (fine-tuned T5 / flan-t5) should
    beat both. Worth more than every architectural change currently in the repo.
 2. **Rebuild the dataset — required before any ranking claim is valid.** 34/55 questions are
-   unanswerable from the corpus. Either restrict to the 21 extractable questions and say so
-   explicitly, or build a corpus that supports the question types.
+   unanswerable from the corpus. ~~Either restrict to the 21 extractable questions and say so
+   explicitly,~~ *(done 2026-11-16: the restricted-set re-analysis is in
+   [`results/RESULTS.md`](results/RESULTS.md) §11 and
+   [`results/restricted_answerable.json`](results/restricted_answerable.json) — the negative
+   result is robust to the restriction)* or build a corpus that supports the question types
+   (still open — tracked as issue #5).
 3. **Report containment alongside F1, and stop using EM.** EM is structurally 0 for any
    extractive system and for the current generator.
 4. **Do not invest in retrieval.** Recall@1 = recall@10. Reranking, hybrid search and graph
