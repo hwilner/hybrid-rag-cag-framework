@@ -753,3 +753,83 @@ sample of the original benchmark's intent — it is the subset on which the benc
 (3) The full repair (option B: corpus rebuild plus a seeded re-run of all three arms) remains
 open and is tracked as issue #5; until it lands, Table 11.2 is the only defensible basis for
 any ranking claim, and the claim it supports is still the negative one.
+
+
+---
+
+## 12. Reader reform: an instruction-tuned reader, re-measured (2026-11-16)
+
+Section 7.7 measured that the 2026-09 reader (`facebook/bart-large`) cannot answer questions —
+it echoes the prompt. Section 8 measured that the reader is the binding constraint. This
+section records the reform: **the same three arms, same retrieval stack, same prompts, same
+decoding policy, same metrics, same statistics — with the reader swapped for
+`google/flan-t5-small`, an instruction-tuned model.** The design and the success criterion
+were pre-registered as issue #7 before the run.
+
+Reproduce: `python src/instruct_reader_ablation.py` → `results/instruct_reader_ablation.json`
+(checkpointed per question; seeded via `question_seed(0, arm, question)`; a resumed run
+reproduces a fresh run exactly — verified on overlapping questions). Run on CPU, 2 vCPU, 3 GB
+RAM, 266 s wall clock for all three arms × 55 questions.
+
+**Table 12.1 — Per-arm metrics with the flan-t5-small reader, restricted 21-answerable set**
+(the BART columns repeat §11 Table 11.1 for contrast).
+
+| Arm | F1 (BART) | F1 (flan) | Containment (BART) | Containment (flan) | EM (BART) | EM (flan) |
+|---|---|---|---|---|---|---|
+| RAG | 0.1095 | 0.8122 | 0.8571 | 0.7619 | 0.0000 | 0.7143 |
+| CAG | 0.0571 | 0.2095 | 0.0476 | 0.0952 | 0.0000 | 0.0952 |
+| Hybrid | 0.0882 | 0.7896 | 0.7143 | 0.8095 | 0.0000 | 0.7143 |
+
+**Table 12.2 — Paired comparisons with the flan reader, restricted set** (percentile bootstrap
+95% CI, n_boot = 10,000, seed 0; two-sided Wilcoxon, `n/a` when fewer than 6 non-zero
+differences).
+
+| Comparison | Metric | Mean Δ | Bootstrap 95% CI | Wilcoxon *p* | Verdict |
+|---|---|---|---|---|---|
+| Hybrid − RAG | F1 | −0.0226 | [−0.1327, +0.0490] | n/a (3 non-zero) | not significant |
+| Hybrid − CAG | F1 | +0.5800 | [+0.3853, +0.7698] | 0.0003 | **significant** |
+| RAG − CAG | F1 | +0.6026 | [+0.3926, +0.7984] | 0.0004 | **significant** |
+| Hybrid − RAG | containment | +0.0476 | [+0.0000, +0.1429] | n/a (1 non-zero) | not significant |
+| Hybrid − CAG | containment | +0.7143 | [+0.5238, +0.9048] | 0.0001 | **significant** |
+| RAG − CAG | containment | +0.6667 | [+0.4286, +0.9048] | <0.0001 | **significant** |
+
+**Figure 12.1 — Reader reform on the answerable subset.**
+[`../docs/figures/reader_reform_comparison.svg`](../docs/figures/reader_reform_comparison.svg)
+(regenerate: `python tools/make_reader_reform_figure.py`). Solid bars: BART-large reader
+(2026-09). Hatched bars: flan-t5-small reader (2026-11). Every arm improves by 0.5–0.7 F1 with
+the instruction-tuned reader; the RAG-vs-Hybrid gap stays within noise in both eras.
+
+**What the reform fixed, measured.** The reader was the bottleneck, exactly as §7.7/§8 said:
+with an instruction-tuned reader, restricted-set EM goes 0.0000 → 0.7143 and F1 goes ~0.09 →
+~0.80. CAG (no retrieval) also improves but remains far below the retrieval arms — the corpus
+matters, as expected.
+
+**What the reform did not fix, measured.** The pre-registered success criterion — Hybrid beats
+RAG on restricted-set F1 with a bootstrap CI excluding zero — was **not met**. Hybrid−RAG F1
+Δ = −0.0226, CI [−0.1327, +0.0490], only 3 of 21 questions with any difference. The
+multi-candidate + contrastive-selection machinery still shows no measurable benefit over a
+single greedy decode, now with a reader that actually answers. Containment favours Hybrid
+(+0.0476) but with 1 non-zero difference no test applies; the CI includes zero. This is the
+second independent measurement (different reader, restricted set) finding the same thing:
+**the extra machinery does not pay for itself.**
+
+**Containment caveat.** BART-RAG's restricted containment (0.8571) exceeds flan-RAG's (0.7619)
+without being better: BART echoed the prompt and context verbatim, so when the gold span was in
+the context it appeared in the "answer" too. Containment rewards verbosity; with a reader that
+answers concisely, containment and EM now agree. Do not read the containment dip as a
+regression.
+
+**New failure mode, measured.** On "What is the capital of France?", retrieval returns the
+Paris document at rank 1, the reader answers "Paris" correctly from that document alone, and
+answers "Tokyo" from the joined top-5 context — context dilution: the top-5 join names three
+capitals, and a 60 M-parameter reader picks the wrong one. The multi-document context that the
+Hybrid design depends on can itself cost answers with small readers.
+
+**Full-set numbers** (n = 55, includes the 34 unanswerable questions; reported for the record,
+not for claims): RAG F1 0.3576 / EM 0.2727, CAG F1 0.1862 / EM 0.0364, Hybrid F1 0.3886 /
+EM 0.2727.
+
+**What was NOT run.** Larger readers (flan-t5-base and up) were not run — the run budget was 3
+GB RAM / 2 vCPU. The corpus is still the defective one (§10); issue #5 (rebuild + full seeded
+re-run) remains open. The 2026-09 BART numbers are unchanged and remain the record of that
+reader.

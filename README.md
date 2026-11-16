@@ -179,9 +179,11 @@ a metric artefact, not a quality difference.
 
 ## What I would do next, ranked by measured impact
 
-1. **Replace the generator.** A five-line lexical span extractor scores F1 0.2277 against the
-   406 M-parameter Hybrid's 0.1821. An instruction-tuned reader (fine-tuned T5 / flan-t5) should
-   beat both. Worth more than every architectural change currently in the repo.
+1. ~~**Replace the generator.**~~ *(done 2026-11-16, measured:* [`results/RESULTS.md`](results/RESULTS.md)
+   *§12 — an instruction-tuned flan-t5-small reader lifts restricted-set EM from 0.0000 to
+   0.7143 and F1 from ~0.09 to ~0.80 on every arm, confirming the reader was the bottleneck.
+   Note: the Hybrid machinery still does not beat single-shot RAG with the fixed reader.)*
+   Remaining upside: larger instruction-tuned readers (flan-t5-base and up), untested.
 2. **Rebuild the dataset — required before any ranking claim is valid.** 34/55 questions are
    unanswerable from the corpus. ~~Either restrict to the 21 extractable questions and say so
    explicitly,~~ *(done 2026-11-16: the restricted-set re-analysis is in
