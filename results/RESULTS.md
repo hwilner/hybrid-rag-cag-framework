@@ -686,3 +686,70 @@ written with. No number in §1–§8 was changed by this revision.
   (recall@1 = recall@10 = 38.2%), so this is a corpus defect, not a retriever defect.
 - **`improve/real-model` was not built on** — it deletes `docs/METHODS.md`, the most honest
   document here, and duplicates work done on this branch. Reconcile manually rather than merge.
+
+
+---
+
+## 11. Benchmark repair, option A: the restricted answerable set (2026-11-16)
+
+Section 10 records that the 55-question dataset is unfit for comparison because 34 of its 55
+gold answers appear in no corpus document. The README's "What I would do next" item 2 lists two
+repairs: rebuild the corpus, or **restrict to the 21 answerable questions and say so
+explicitly**. This section implements the second repair — as a re-analysis of committed
+measured data, not a new experiment.
+
+Reproduce: `python src/restricted_answerable_eval.py` → `results/restricted_answerable.json`
+
+**Provenance and integrity.** No model was loaded and no question was re-run
+(`new_model_runs: 0` in the artefact). Per-question F1/EM/containment come from
+`results/ablation/ablation_main.json` (the 2026-09 real runs); the answerable set comes from
+`results/diagnosis.json` (`found_at` non-null, i.e. the gold answer appears in a retrieved
+document — recall@10 equals corpus coverage, so this is exactly the 21 extractable questions).
+Before restricting, the script recomputes the full-set arm aggregates from the per-question
+records and requires an exact match (tolerance 1e-12) with the committed arm-level numbers;
+`tests/test_restricted_answerable.py` re-checks this independently, checks the artefact
+reproduces, and checks the figure regenerates byte-for-byte.
+
+**Table 11.1 — Per-arm metrics, restricted to the 21 answerable questions** (full-set n = 55
+values from §6.2 shown for comparison; re-aggregation of the committed per-question
+measurements, no new runs).
+
+| Arm | F1 (n=55) | F1 (n=21) | Containment (n=55) | Containment (n=21) | EM (both) |
+|---|---|---|---|---|---|
+| RAG | 0.1892 | 0.1095 | 0.3273 | 0.8571 | 0.0000 |
+| CAG | 0.1705 | 0.0571 | 0.0182 | 0.0476 | 0.0000 |
+| Hybrid | 0.1821 | 0.0882 | 0.2727 | 0.7143 | 0.0000 |
+
+**Table 11.2 — Paired comparisons on the restricted set** (percentile bootstrap 95% CI,
+n_boot = 10,000, seed 0; two-sided Wilcoxon; same five comparisons as §6.4).
+
+| Comparison | Metric | Mean Δ | Bootstrap 95% CI | Wilcoxon *p* | Verdict |
+|---|---|---|---|---|---|
+| Hybrid − RAG | F1 | −0.0214 | [−0.0475, +0.0065] | 0.195 | not significant |
+| Hybrid − CAG | F1 | +0.0310 | [−0.0175, +0.0761] | 0.267 | not significant |
+| RAG − CAG | F1 | +0.0524 | [+0.0151, +0.0876] | 0.016 | **significant** |
+| Hybrid − CAG | containment | +0.6667 | [+0.4762, +0.8571] | 0.0002 | **significant** |
+| RAG − CAG | containment | +0.8095 | [+0.6190, +0.9524] | <0.0001 | **significant** |
+
+**Figure 11.1 — Full set vs answerable subset, per arm.**
+[`../docs/figures/restricted_answerable_comparison.svg`](../docs/figures/restricted_answerable_comparison.svg)
+(regenerate: `python tools/make_restricted_figure.py`). Solid bars: full set (n = 55). Hatched
+bars: answerable subset (n = 21). Containment rises sharply on the restricted set because the
+unanswerable questions — where no system can contain the gold answer — are removed; F1 falls
+because the answerable questions have short gold answers while the systems emit whole
+sentences (the token-F1 ceiling of §7.6 binds harder).
+
+**What changes, and what does not.** The headline result is **robust to the restriction**: on
+the 21 questions the benchmark can actually adjudicate, the Hybrid arm still does not beat
+plain RAG on F1 (−0.0214, *p* = 0.195, CI includes zero), and still costs 2.5× the wall clock.
+One comparison strengthens: RAG now beats CAG on F1 significantly (*p* = 0.016), which was
+borderline on the full set. The absolute F1 values are lower and containment values higher on
+the restricted set — a subset composition effect, not a change in any system's behaviour; the
+per-question records are untouched.
+
+**Caveats.** (1) n = 21 is small; the CIs are wide. (2) The restricted set over-weights easy
+and medium questions (10 easy, 10 medium, 1 hard, 0 very_hard), so it is *not* a representative
+sample of the original benchmark's intent — it is the subset on which the benchmark is valid.
+(3) The full repair (option B: corpus rebuild plus a seeded re-run of all three arms) remains
+open and is tracked as issue #5; until it lands, Table 11.2 is the only defensible basis for
+any ranking claim, and the claim it supports is still the negative one.
