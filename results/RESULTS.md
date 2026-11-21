@@ -833,3 +833,38 @@ EM 0.2727.
 GB RAM / 2 vCPU. The corpus is still the defective one (§10); issue #5 (rebuild + full seeded
 re-run) remains open. The 2026-09 BART numbers are unchanged and remain the record of that
 reader.
+
+## 13. Benchmark-validity gate and verification record (2026-11-21)
+
+The repair gate for issue #5 now exists: `src/benchmark_validity.py` (library) and
+`tools/check_benchmark_validity.py` (CLI) measure whether every question in a benchmark is
+answerable from its corpus — the exact defect §7 measured — and exit non-zero unless the
+benchmark passes a declared threshold (default: 100% answerable overall and per question
+type, the strict reading of issue #5; a declared subset of types is accommodated with
+`--no-require-all-types --min-answerable F`). The normalisation is pinned by test to agree
+with `diagnose_failures.normalize`, so the gate measures the same quantity as the diagnosis
+it gates. The gate's purpose is the rebuild: run it on a candidate corpus/question set
+*before* spending GPU hours on the seeded ablation re-run.
+
+**Measured on the committed benchmark** (`python tools/check_benchmark_validity.py` →
+`results/benchmark_validity.json`; `new_model_runs: 0`; source-artefact SHA-256 in the
+report): 21/55 answerable (38.2%); by difficulty easy 10/10, medium 10/10, hard 1/15,
+very_hard 0/20 — reproducing §7 exactly. Verdict: FAIL under the strict gate, as expected;
+that failure is the defect issue #5 tracks. Twelve tests in
+`tests/test_benchmark_validity.py` pin the counts, the gate boundary behaviour, the CLI exit
+codes, and the committed report to recomputation.
+
+**Executed 2026-11-21** (light environment: numpy, scikit-learn, scipy, pytest, nltk; no
+torch, no network):
+
+| Check | Outcome |
+|---|---|
+| `pytest tests/ -q` | 71 passed, 1 skipped (the torch-dependent module skips at collection) |
+| `tools/check_integrity.py` | 4/5 ok; `provenance` fails only because a tarball checkout has no `.git`, so `git_provenance()` can return no SHA — verified to be the download format, not a code defect; it passes in a real clone and in CI |
+| `tools/check_benchmark_validity.py` | FAIL on the committed benchmark, with the measured 21/55 — the expected verdict (see above) |
+| `docs/RESULTS.md` | added: the paper-style results section; every number in it is quoted from §§2–12, nothing new estimated |
+
+**What was NOT run.** Anything requiring torch, a model checkpoint, or the network. Issue
+#5's corpus rebuild and seeded ablation re-run remain deferred: they require GPU-scale
+compute and a corpus-construction decision by the scientific owner. No claims about the
+repaired benchmark are made.

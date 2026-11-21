@@ -190,7 +190,10 @@ a metric artefact, not a quality difference.
    [`results/RESULTS.md`](results/RESULTS.md) §11 and
    [`results/restricted_answerable.json`](results/restricted_answerable.json) — the negative
    result is robust to the restriction)* or build a corpus that supports the question types
-   (still open — tracked as issue #5).
+   (still open — tracked as issue #5). The acceptance gate for the rebuild now exists:
+   `python tools/check_benchmark_validity.py --candidate new_benchmark.json` must pass
+   (every question answerable from the corpus) *before* the seeded ablation re-run is
+   worth its GPU hours.
 3. **Report containment alongside F1, and stop using EM.** EM is structurally 0 for any
    extractive system and for the current generator.
 4. **Do not invest in retrieval.** Recall@1 = recall@10. Reranking, hybrid search and graph
@@ -322,6 +325,7 @@ hybrid-rag-cag-framework/
 │   ├── INTRODUCTION.md                 # academic introduction, with derivations
 │   ├── EXTENDED_INTRODUCTION.md        # same, for readers with no background
 │   ├── METHODS.md                      # materials and methods
+│   ├── RESULTS.md                      # the paper-style results section
 │   ├── ROADMAP.md · PROJECT.md
 │   ├── TECHNICAL_EVALUATION_NOTES.md
 │   └── figures/
@@ -333,7 +337,10 @@ hybrid-rag-cag-framework/
 │   ├── test_metrics_calculator.py
 │   ├── test_results_json.py
 │   └── test_loss_differentiable.py
-├── tools/check_integrity.py
+├── tools/
+│   ├── check_integrity.py            # dependency-independent checks, 5/5 pass
+│   ├── check_benchmark_validity.py   # issue #5 gate: is the benchmark answerable at all?
+│   └── make_restricted_figure.py · make_reader_reform_figure.py
 ├── retracted/                          # quarantined: produced the fabricated numbers
 │   ├── README.md
 │   ├── option3_full_scale_evaluation.py
