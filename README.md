@@ -193,7 +193,18 @@ a metric artefact, not a quality difference.
    (still open — tracked as issue #5). The acceptance gate for the rebuild now exists:
    `python tools/check_benchmark_validity.py --candidate new_benchmark.json` must pass
    (every question answerable from the corpus) *before* the seeded ablation re-run is
-   worth its GPU hours.
+   worth its GPU hours. The seeded harness now consumes that candidate directly and
+   refuses it before loading any model if the gate fails:
+
+   ```bash
+   python tools/run_repaired_ablation.py \
+     --candidate new_benchmark.json \
+     --branch main \
+     --out results/repaired_ablation_main.json
+   ```
+
+   The repaired-benchmark analysis is pre-registered in
+   [`docs/BENCHMARK_REBUILD_PREREGISTRATION.md`](docs/BENCHMARK_REBUILD_PREREGISTRATION.md).
 3. **Report containment alongside F1, and stop using EM.** EM is structurally 0 for any
    extractive system and for the current generator.
 4. **Do not invest in retrieval.** Recall@1 = recall@10. Reranking, hybrid search and graph
@@ -326,6 +337,7 @@ hybrid-rag-cag-framework/
 │   ├── EXTENDED_INTRODUCTION.md        # same, for readers with no background
 │   ├── METHODS.md                      # materials and methods
 │   ├── RESULTS.md                      # the paper-style results section
+│   ├── BENCHMARK_REBUILD_PREREGISTRATION.md  # issue #5 repaired-run scaffold
 │   ├── ROADMAP.md · PROJECT.md
 │   ├── TECHNICAL_EVALUATION_NOTES.md
 │   └── figures/
@@ -340,6 +352,7 @@ hybrid-rag-cag-framework/
 ├── tools/
 │   ├── check_integrity.py            # dependency-independent checks, 5/5 pass
 │   ├── check_benchmark_validity.py   # issue #5 gate: is the benchmark answerable at all?
+│   ├── run_repaired_ablation.py      # issue #5 gated seeded-run wrapper
 │   └── make_restricted_figure.py · make_reader_reform_figure.py
 ├── retracted/                          # quarantined: produced the fabricated numbers
 │   ├── README.md
