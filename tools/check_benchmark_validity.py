@@ -134,12 +134,31 @@ def main(argv=None) -> int:
         return 1
 
     schema_problems = validity.validate_schema(corpus, questions)
-    report = validity.answerability_report(corpus, questions)
-    verdict = validity.gate_verdict(
-        report,
-        min_answerable=args.min_answerable,
-        require_all_types=not args.no_require_all_types,
-    )
+    if schema_problems:
+        # A malformed candidate must fail cleanly, not crash while the gate is
+        # trying to protect a GPU-scale run from bad input.
+        report = {
+            "n_questions": len(questions) if hasattr(questions, "__len__") else 0,
+            "n_corpus_docs": len(corpus) if hasattr(corpus, "__len__") else 0,
+            "n_answerable": 0,
+            "answerable_fraction": None,
+            "by_difficulty": {},
+            "by_type": {},
+            "per_question": [],
+        }
+        verdict = {
+            "passed": False,
+            "min_answerable": args.min_answerable,
+            "require_all_types": not args.no_require_all_types,
+            "failures": ["schema validation failed"],
+        }
+    else:
+        report = validity.answerability_report(corpus, questions)
+        verdict = validity.gate_verdict(
+            report,
+            min_answerable=args.min_answerable,
+            require_all_types=not args.no_require_all_types,
+        )
 
     full = {
         "provenance": provenance,
@@ -156,8 +175,10 @@ def main(argv=None) -> int:
     print(f"source     : {provenance['source']}")
     print(f"corpus     : {report['n_corpus_docs']} documents")
     print(f"questions  : {n}")
+    answerable_fraction = report["answerable_fraction"]
     print(f"answerable : {report['n_answerable']}/{n}"
-          + (f" = {report['answerable_fraction']*100:.1f}%" if n else ""))
+          + (f" = {answerable_fraction*100:.1f}%"
+             if answerable_fraction is not None else ""))
     if schema_problems:
         print(f"\nSCHEMA PROBLEMS ({len(schema_problems)}):")
         for problem in schema_problems:

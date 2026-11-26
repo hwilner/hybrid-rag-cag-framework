@@ -71,11 +71,17 @@ def validate_schema(corpus: Sequence[Any], questions: Sequence[Any]) -> List[str
     substring test, so it is rejected outright.
     """
     problems: List[str] = []
-    if not corpus:
-        problems.append("corpus is empty")
-    for i, doc in enumerate(corpus):
-        if not isinstance(doc, str) or not doc.strip():
-            problems.append(f"corpus[{i}] is not a non-empty string")
+    if isinstance(corpus, (str, bytes)) or not isinstance(corpus, Sequence):
+        problems.append("corpus must be a JSON array of non-empty strings")
+    else:
+        if not corpus:
+            problems.append("corpus is empty")
+        for i, doc in enumerate(corpus):
+            if not isinstance(doc, str) or not doc.strip():
+                problems.append(f"corpus[{i}] is not a non-empty string")
+    if isinstance(questions, (str, bytes)) or not isinstance(questions, Sequence):
+        problems.append("questions must be a JSON array of objects")
+        return problems
     if not questions:
         problems.append("question set is empty")
     seen = set()

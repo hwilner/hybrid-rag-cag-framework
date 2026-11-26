@@ -88,6 +88,12 @@ def test_schema_rejects_empty_corpus_and_missing_fields():
     assert any("missing" in p for p in problems)
 
 
+def test_schema_rejects_non_array_inputs_cleanly():
+    problems = bv.validate_schema("not an array", None)
+    assert any("corpus must be" in p for p in problems)
+    assert any("questions must be" in p for p in problems)
+
+
 # ---------------------------------------------------------------------------
 # Answerability and the gate on synthetic benchmarks
 # ---------------------------------------------------------------------------
@@ -199,6 +205,22 @@ def test_tool_cli_fails_committed_benchmark_and_passes_candidate(tmp_path):
         capture_output=True, text=True)
     assert good.returncode == 0
     assert "VERDICT: PASS" in good.stdout
+
+
+def test_tool_cli_fails_schema_errors_without_traceback(tmp_path):
+    """A malformed candidate gets a clean FAIL, not a KeyError traceback."""
+    candidate = tmp_path / "schema_bad.json"
+    candidate.write_text(json.dumps({
+        "corpus": ["Paris is here."],
+        "questions": [{"question": "Q?"}],
+    }))
+    bad = subprocess.run(
+        [sys.executable, TOOL, "--candidate", str(candidate)],
+        capture_output=True, text=True)
+    assert bad.returncode == 1
+    assert "SCHEMA PROBLEMS" in bad.stdout
+    assert "VERDICT: FAIL" in bad.stdout
+    assert "Traceback" not in bad.stderr
 
 
 def test_tool_report_is_strict_json(tmp_path):
