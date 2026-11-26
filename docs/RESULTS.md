@@ -98,5 +98,9 @@ but "Tokyo" from the joined top-5 context (§12).
 Larger instruction-tuned readers (flan-t5-base and up); the corpus rebuild
 and seeded ablation re-run (issue #5 — requires GPU-scale compute and an
 owner decision on corpus construction). These are recorded as NOT RUN in
-§12 and §13 rather than estimated. No ranking claim about the repaired
-benchmark is made anywhere in this repository.
+§12 and §13 rather than estimated. The repaired-benchmark analysis is
+pre-registered in
+[`BENCHMARK_REBUILD_PREREGISTRATION.md`](BENCHMARK_REBUILD_PREREGISTRATION.md),
+and `tools/run_repaired_ablation.py` now refuses an invalid candidate before
+loading any model, but no repaired-benchmark result exists. No ranking claim about the
+repaired benchmark is made anywhere in this repository.
